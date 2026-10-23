@@ -895,6 +895,11 @@ class _DatePickerTile extends StatelessWidget {
   }
 }
 
+
+// AREA PEMILIK — pemetaan ERD utama:
+// USERS (role pemilik), PRODUCTS + CATEGORIES, AVAILABILITY, RENTALS + ORDER_DETAILS,
+// PAYMENTS, SHIPMENTS, CHATS + CHAT_MESSAGE, NOTIFICATIONS, VERIFICATIONS, DISPUTES, REFUNDS.
+// Data saat ini dummy/local; repository/API dapat ditambahkan tanpa mengubah tema UI.
 class OwnerHomePage extends StatefulWidget {
   final String ownerName, shopName;
   const OwnerHomePage({super.key, required this.ownerName, required this.shopName});
@@ -904,30 +909,131 @@ class OwnerHomePage extends StatefulWidget {
 
 class _OwnerHomePageState extends State<OwnerHomePage> {
   int tab = 0;
+  final List<Map<String, String>> products = [
+    {'name': 'Kebaya Jawa', 'category': 'Pakaian Adat', 'price': '150000', 'deposit': '100000', 'stock': '5', 'condition': 'Sangat baik', 'location': 'Yogyakarta', 'description': 'Kebaya klasik Jawa dengan detail bordir.', 'status': 'Tersedia'},
+    {'name': 'Kain Tenun Bali', 'category': 'Kain Tradisional', 'price': '100000', 'deposit': '50000', 'stock': '3', 'condition': 'Baik', 'location': 'Denpasar', 'description': 'Kain tenun tradisional untuk acara adat.', 'status': 'Tersedia'},
+    {'name': 'Aksesori Tradisional', 'category': 'Kerajinan', 'price': '75000', 'deposit': '25000', 'stock': '8', 'condition': 'Baik', 'location': 'Yogyakarta', 'description': 'Aksesori pelengkap busana tradisional.', 'status': 'Tersedia'},
+  ];
+  final List<Map<String, String>> orders = [
+    {'customer': 'Sari Wulandari', 'product': 'Kebaya Jawa', 'date': '3–6 Okt 2026', 'total': '450000', 'status': 'Menunggu Konfirmasi'},
+    {'customer': 'Budi Santoso', 'product': 'Kain Tenun Bali', 'date': '8–10 Okt 2026', 'total': '300000', 'status': 'Dikonfirmasi'},
+    {'customer': 'Rina Kartika', 'product': 'Aksesori Tradisional', 'date': '12–14 Okt 2026', 'total': '225000', 'status': 'Sedang Disewa'},
+  ];
+
+  void addProduct() async {
+    final nameController = TextEditingController();
+    final priceController = TextEditingController();
+    final stockController = TextEditingController(text: '1');
+    final depositController = TextEditingController(text: '0');
+    final locationController = TextEditingController();
+    final descriptionController = TextEditingController();
+    String condition = 'Sangat baik';
+    String category = 'Pakaian Adat';
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) =>
+        AlertDialog(
+          backgroundColor: gading,
+          title: const Text('Tambah Produk', style: TextStyle(color: kayu, fontWeight: FontWeight.w900)),
+          content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama produk')),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: category,
+              decoration: const InputDecoration(labelText: 'Kategori'),
+              items: const ['Pakaian Adat', 'Kostum Tari', 'Kerajinan', 'Kain Tradisional', 'Alat Musik']
+                .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+              onChanged: (v) => setDialogState(() => category = v ?? category),
+            ),
+            const SizedBox(height: 10),
+            TextField(controller: priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa per hari (Rp)')),
+            const SizedBox(height: 10),
+            TextField(controller: stockController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stok')),
+            const SizedBox(height: 10),
+            TextField(controller: depositController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit (Rp)')),
+            const SizedBox(height: 10),
+            TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Lokasi produk / toko')),
+            const SizedBox(height: 10),
+            DropdownButtonFormField<String>(
+              initialValue: condition,
+              decoration: const InputDecoration(labelText: 'Kondisi barang'),
+              items: const ['Sangat baik', 'Baik', 'Cukup baik']
+                  .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+              onChanged: (v) => setDialogState(() => condition = v ?? condition),
+            ),
+            const SizedBox(height: 10),
+            TextField(controller: descriptionController, maxLines: 2, decoration: const InputDecoration(labelText: 'Deskripsi')),
+          ])),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: kayu),
+              onPressed: () {
+                if (nameController.text.trim().isEmpty || (int.tryParse(priceController.text) ?? 0) <= 0 || (int.tryParse(stockController.text) ?? 0) <= 0) {
+                  notice(dialogContext, 'Isi nama, harga, dan stok dengan benar.');
+                  return;
+                }
+                Navigator.pop(dialogContext, {
+                  'name': nameController.text.trim(), 'category': category,
+                  'price': priceController.text.trim(), 'stock': stockController.text.trim(),
+                  'deposit': depositController.text.trim().isEmpty ? '0' : depositController.text.trim(),
+                  'condition': condition, 'location': locationController.text.trim(),
+                  'description': descriptionController.text.trim(), 'status': 'Tersedia'
+                });
+              },
+              child: const Text('Simpan'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (result != null && mounted) setState(() => products.insert(0, result));
+    nameController.dispose(); priceController.dispose(); stockController.dispose();
+    depositController.dispose(); locationController.dispose(); descriptionController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
-      OwnerDashboard(name: widget.ownerName, shop: widget.shopName),
-      const PlaceholderPage(title: 'Produk Saya', description: 'Kelola produk budaya yang disewakan.', icon: Icons.inventory_2_outlined),
-      const PlaceholderPage(title: 'Pesanan Masuk', description: 'Pesanan dari penyewa akan tampil di sini.', icon: Icons.receipt_long_outlined),
+      OwnerDashboard(name: widget.ownerName, shop: widget.shopName, productCount: products.length, orders: orders,
+        onOpenProducts: () => setState(() => tab = 1), onOpenOrders: () => setState(() => tab = 2),
+        onOpenAvailability: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerAvailabilityPage(products: products))),
+        onOpenReviews: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerReviewsPage(shopName: widget.shopName.isEmpty ? 'Toko Sari Budaya' : widget.shopName))),
+        onOpenShopProfile: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerShopProfilePage(shopName: widget.shopName.isEmpty ? 'Toko Sari Budaya' : widget.shopName))),
+        onOpenStats: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerPerformancePage())),
+        onOpenVerification: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerVerificationPage()))),
+      OwnerProductsPage(products: products, onAdd: addProduct, onChanged: () => setState(() {})),
+      OwnerOrdersPage(orders: orders, onChanged: () => setState(() {})),
+      const OwnerFinancePage(),
       ProfilePage(name: widget.ownerName, role: 'Pemilik Toko'),
     ];
     return Scaffold(
-      appBar: AppBar(title: const Text('RAGAMNUSA', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1))),
-      body: pages[tab],
+      backgroundColor: gading,
+      appBar: AppBar(
+        backgroundColor: gading, foregroundColor: kayu, elevation: 0,
+        title: const Text('RAGAMNUSA', style: TextStyle(color: kayu, fontWeight: FontWeight.w900, letterSpacing: 1)),
+        actions: [
+          IconButton(
+            tooltip: 'Notifikasi',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage())),
+            icon: const Icon(Icons.notifications_none_rounded, color: kayu),
+          ),
+        ],
+      ),
+      body: IndexedStack(index: tab, children: pages),
       floatingActionButton: tab == 1 ? FloatingActionButton.extended(
-        backgroundColor: kayu, foregroundColor: Colors.white,
-        onPressed: () => notice(context, 'Form tambah produk akan dibuat pada tahap berikutnya.'),
-        icon: const Icon(Icons.add), label: const Text('Tambah produk'),
+        backgroundColor: kayu, foregroundColor: gading,
+        onPressed: addProduct, icon: const Icon(Icons.add), label: const Text('Tambah produk'),
       ) : null,
       bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (i) => setState(() => tab = i),
+        backgroundColor: gading, indicatorColor: terracotta.withValues(alpha: .16),
+        selectedIndex: tab, onDestinationSelected: (i) => setState(() => tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.dashboard_outlined), label: 'Beranda'),
-          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), label: 'Produk'),
-          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), label: 'Pesanan'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Profil'),
+          NavigationDestination(icon: Icon(Icons.dashboard_outlined), selectedIcon: Icon(Icons.dashboard), label: 'Beranda'),
+          NavigationDestination(icon: Icon(Icons.inventory_2_outlined), selectedIcon: Icon(Icons.inventory_2), label: 'Produk'),
+          NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Pesanan'),
+          NavigationDestination(icon: Icon(Icons.account_balance_wallet_outlined), selectedIcon: Icon(Icons.account_balance_wallet), label: 'Keuangan'),
+          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
     );
@@ -936,56 +1042,681 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
 
 class OwnerDashboard extends StatelessWidget {
   final String name, shop;
-  const OwnerDashboard({super.key, required this.name, required this.shop});
+  final int productCount;
+  final List<Map<String, String>> orders;
+  final VoidCallback onOpenProducts, onOpenOrders, onOpenAvailability, onOpenReviews;
+  final VoidCallback onOpenShopProfile, onOpenStats, onOpenVerification;
+  const OwnerDashboard({super.key, required this.name, required this.shop, required this.productCount,
+    required this.orders, required this.onOpenProducts, required this.onOpenOrders, required this.onOpenAvailability,
+    required this.onOpenReviews, required this.onOpenShopProfile, required this.onOpenStats, required this.onOpenVerification});
+
   @override
-  Widget build(BuildContext context) => ListView(
+  Widget build(BuildContext context) {
+    final pending = orders.where((o) => o['status'] == 'Menunggu Konfirmasi').length;
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
+      Text('Selamat datang, $name 👋', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 4),
+      Text(shop.isEmpty ? 'Kelola toko budaya kamu di RAGAMNUSA.' : shop,
+        style: TextStyle(color: teks.withValues(alpha: .7))),
+      const SizedBox(height: 18),
+      Container(
         padding: const EdgeInsets.all(20),
-        children: [
-          Text('Halo, $name 👋', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 5),
-          Text(shop, style: TextStyle(color: teks.withValues(alpha: .7))),
-          const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: kayu, borderRadius: BorderRadius.circular(20)),
-            child: const Text('Dashboard Toko\nKelola persewaan produk budaya kamu.',
-                style: TextStyle(color: Colors.white, fontSize: 21, fontWeight: FontWeight.w800, height: 1.4)),
-          ),
-          const SizedBox(height: 22),
-          const Text('Ringkasan toko', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 12),
-          const Row(children: [
-            Expanded(child: StatCard(icon: Icons.inventory_2_outlined, label: 'Produk aktif')),
-            SizedBox(width: 12),
-            Expanded(child: StatCard(icon: Icons.receipt_long_outlined, label: 'Pesanan baru')),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF4E2F21), Color(0xFF8C583A), terracotta]),
+        ),
+        child: Stack(children: [
+          const Positioned(right: 0, bottom: -10, child: Icon(Icons.spa_outlined, size: 90, color: Color(0x33F8F3E9))),
+          Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('TOKO BUDAYA ANDA', style: TextStyle(color: gading, fontSize: 12, letterSpacing: 1.3, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            const Text('Jaga budaya,\nmajukan usaha.', style: TextStyle(color: gading, fontSize: 24, height: 1.2, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            const Text('Pantau produk, pesanan, dan pendapatan dalam satu tempat.',
+              style: TextStyle(color: Color(0xFFF1E5D6), height: 1.4)),
           ]),
-          const SizedBox(height: 12),
-          const Row(children: [
-            Expanded(child: StatCard(icon: Icons.calendar_month_outlined, label: 'Jadwal sewa')),
-            SizedBox(width: 12),
-            Expanded(child: StatCard(icon: Icons.star_border_rounded, label: 'Ulasan')),
+        ]),
+      ),
+      const SizedBox(height: 22),
+      const Text('Ringkasan toko', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 12),
+      Row(children: [
+        Expanded(child: _OwnerMetric(icon: Icons.inventory_2_outlined, label: 'Produk aktif', value: '$productCount')),
+        const SizedBox(width: 10),
+        Expanded(child: _OwnerMetric(icon: Icons.receipt_long_outlined, label: 'Pesanan masuk', value: '${orders.length}')),
+      ]),
+      const SizedBox(height: 10),
+      Row(children: [
+        Expanded(child: _OwnerMetric(icon: Icons.pending_actions_outlined, label: 'Perlu konfirmasi', value: '$pending')),
+        const SizedBox(width: 10),
+        const Expanded(child: _OwnerMetric(icon: Icons.account_balance_wallet_outlined, label: 'Pendapatan demo', value: 'Rp950 rb')),
+      ]),
+      const SizedBox(height: 22),
+      _OwnerSectionHeader(title: 'Rating & komentar toko', action: 'Lihat semua', onTap: onOpenReviews),
+      const SizedBox(height: 8),
+      _surface(InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onOpenReviews,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(children: [
+            Container(
+              width: 62, height: 62,
+              decoration: BoxDecoration(color: const Color(0xFFF4E7D5), borderRadius: BorderRadius.circular(15)),
+              child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text('4.8', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: kayu)),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_half_rounded, size: 12, color: terracotta)]),
+              ]),
+            ),
+            const SizedBox(width: 13),
+            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Ulasan dari penyewa', style: TextStyle(fontWeight: FontWeight.w900, color: teks)),
+              SizedBox(height: 4),
+              Text('Lihat komentar, penilaian, dan tanggapi ulasan pelanggan.', style: TextStyle(fontSize: 12, height: 1.35, color: Color(0xFF78695D))),
+              SizedBox(height: 6),
+              Text('126 ulasan · 8 belum dibalas', style: TextStyle(fontSize: 11, color: terracotta, fontWeight: FontWeight.w800)),
+            ])),
+            const Icon(Icons.chevron_right, color: terracotta),
           ]),
-          const SizedBox(height: 20),
-          const Text('Angka masih contoh untuk tampilan demo.', style: TextStyle(fontSize: 12, color: teks)),
-        ],
-      );
+        ),
+      )),
+      const SizedBox(height: 22),
+      const Text('Kelola dan kembangkan toko', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 10),
+      _surface(Column(children: [
+        _OwnerActionTile(icon: Icons.storefront_outlined, title: 'Profil toko publik', subtitle: 'Foto sampul, alamat, jam operasional, dan informasi toko', onTap: onOpenShopProfile),
+        const Divider(height: 1),
+        _OwnerActionTile(icon: Icons.insights_outlined, title: 'Statistik performa', subtitle: 'Produk populer, pendapatan, dan tren penyewaan', onTap: onOpenStats),
+        const Divider(height: 1),
+        _OwnerActionTile(icon: Icons.verified_user_outlined, title: 'Verifikasi toko', subtitle: 'Status verifikasi identitas dan toko', onTap: onOpenVerification, trailing: const _VerificationPill()),
+      ])),
+      const SizedBox(height: 23),
+      _OwnerSectionHeader(title: 'Pesanan terbaru', action: 'Lihat semua', onTap: onOpenOrders),
+      const SizedBox(height: 8),
+      ...orders.take(3).map((o) => _OwnerOrderTile(order: o, compact: true, onChanged: () {})),
+      const SizedBox(height: 18),
+      _OwnerSectionHeader(title: 'Kelola produk', action: 'Lihat produk', onTap: onOpenProducts),
+      const SizedBox(height: 8),
+      _surface(Row(children: [
+        Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(13)),
+          child: const Icon(Icons.storefront_outlined, color: kayu, size: 28)),
+        const SizedBox(width: 12),
+        const Expanded(child: Text('Pastikan harga, stok, dan ketersediaan produk selalu diperbarui.', style: TextStyle(height: 1.4))),
+        const Icon(Icons.chevron_right, color: terracotta),
+      ])),
+      const SizedBox(height: 10),
+      const SizedBox(height: 12),
+      _surface(InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onOpenAvailability,
+        child: const Padding(
+          padding: EdgeInsets.all(15),
+          child: Row(children: [
+            CircleAvatar(backgroundColor: Color(0xFFEDE2D0), child: Icon(Icons.calendar_month_outlined, color: kayu)),
+            SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text('Kelola ketersediaan', style: TextStyle(fontWeight: FontWeight.w900, color: teks)),
+              SizedBox(height: 3),
+              Text('Atur tanggal produk bisa disewa atau sedang digunakan.', style: TextStyle(fontSize: 12, color: Color(0xFF78695D))),
+            ])),
+            Icon(Icons.chevron_right, color: terracotta),
+          ]),
+        ),
+      )),
+      const SizedBox(height: 12),
+      const Text('Data pada dashboard ini masih berupa contoh untuk prototype.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+    ]);
+  }
 }
 
-class StatCard extends StatelessWidget {
+class _OwnerActionTile extends StatelessWidget {
   final IconData icon;
-  final String label;
-  const StatCard({super.key, required this.icon, required this.label});
+  final String title, subtitle;
+  final VoidCallback onTap;
+  final Widget? trailing;
+  const _OwnerActionTile({required this.icon, required this.title, required this.subtitle, required this.onTap, this.trailing});
+  @override
+  Widget build(BuildContext context) => ListTile(
+    onTap: onTap,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+    leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: kayu)),
+    title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: teks, fontSize: 13)),
+    subtitle: Padding(padding: const EdgeInsets.only(top: 3), child: Text(subtitle, style: const TextStyle(fontSize: 11, height: 1.3, color: Color(0xFF78695D)))),
+    trailing: trailing ?? const Icon(Icons.chevron_right_rounded, color: terracotta),
+  );
+}
+
+class _VerificationPill extends StatelessWidget {
+  const _VerificationPill();
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: const Color(0xFFF5E9D8), borderRadius: BorderRadius.circular(20)), child: const Text('Demo', style: TextStyle(color: kayu, fontSize: 10, fontWeight: FontWeight.w800)));
+}
+
+class _OwnerMetric extends StatelessWidget {
+  final IconData icon;
+  final String label, value;
+  const _OwnerMetric({required this.icon, required this.label, required this.value});
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: kayu.withValues(alpha: .13))),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon, color: terracotta, size: 25),
-          const SizedBox(height: 10),
-          const Text('0', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900)),
-          Text(label, style: TextStyle(fontSize: 12, color: teks.withValues(alpha: .7))),
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: kayu.withValues(alpha: .12))),
+    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Icon(icon, color: terracotta, size: 23),
+      const SizedBox(height: 10),
+      Text(value, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: kayu)),
+      const SizedBox(height: 3),
+      Text(label, style: TextStyle(fontSize: 11, color: teks.withValues(alpha: .72))),
+    ]),
+  );
+}
+
+class _OwnerSectionHeader extends StatelessWidget {
+  final String title, action;
+  final VoidCallback onTap;
+  const _OwnerSectionHeader({required this.title, required this.action, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Row(children: [
+    Expanded(child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: teks))),
+    TextButton(onPressed: onTap, child: Text(action, style: const TextStyle(color: terracotta))),
+  ]);
+}
+
+// Fitur ini merepresentasikan tabel AVAILABILITY pada ERD.
+// Saat backend disambungkan, simpan product_id, start_date, end_date, status, create_at, updated_at.
+class OwnerAvailabilityPage extends StatefulWidget {
+  final List<Map<String, String>> products;
+  const OwnerAvailabilityPage({super.key, required this.products});
+  @override
+  State<OwnerAvailabilityPage> createState() => _OwnerAvailabilityPageState();
+}
+
+class _OwnerAvailabilityPageState extends State<OwnerAvailabilityPage> {
+  String? selectedProduct;
+  final Map<String, Set<DateTime>> blockedDatesByProduct = {};
+
+  DateTime _day(DateTime date) => DateTime(date.year, date.month, date.day);
+  String _format(DateTime date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.products.isNotEmpty) selectedProduct = widget.products.first['name'];
+  }
+
+  Future<void> _addBlockedDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: DateTime(now.year - 1),
+      lastDate: DateTime(now.year + 3),
+      builder: (context, child) => Theme(
+        data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: kayu, surface: gading)),
+        child: child!,
+      ),
+    );
+    if (picked != null && mounted) {
+      setState(() => blockedDatesByProduct.putIfAbsent(selectedProduct ?? '', () => <DateTime>{}).add(_day(picked)));
+      notice(context, 'Tanggal ${_format(picked)} ditandai tidak tersedia (demo).');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedDates = (blockedDatesByProduct[selectedProduct ?? ''] ?? <DateTime>{}).toList()..sort();
+    return Scaffold(
+      backgroundColor: gading,
+      appBar: AppBar(title: const Text('Ketersediaan Produk'), backgroundColor: gading, foregroundColor: kayu),
+      body: ListView(padding: const EdgeInsets.all(18), children: [
+        const Text('Atur jadwal sewa', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: teks)),
+        const SizedBox(height: 5),
+        const Text('Tandai tanggal ketika produk sedang digunakan atau tidak dapat disewakan.', style: TextStyle(color: Color(0xFF78695D), height: 1.4)),
+        const SizedBox(height: 18),
+        DropdownButtonFormField<String>(
+          value: selectedProduct,
+          decoration: const InputDecoration(labelText: 'Pilih produk', prefixIcon: Icon(Icons.inventory_2_outlined)),
+          items: widget.products.map((p) => DropdownMenuItem(value: p['name'], child: Text(p['name'] ?? 'Produk'))).toList(),
+          onChanged: (value) => setState(() => selectedProduct = value),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: kayu.withValues(alpha: .12))),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Row(children: [Icon(Icons.info_outline, color: terracotta), SizedBox(width: 8), Expanded(child: Text('Status ketersediaan', style: TextStyle(fontWeight: FontWeight.w900, color: teks)))]),
+            const SizedBox(height: 12),
+            const Row(children: [CircleAvatar(radius: 5, backgroundColor: zaitun), SizedBox(width: 8), Text('Tersedia untuk disewa')]),
+            const SizedBox(height: 8),
+            const Row(children: [CircleAvatar(radius: 5, backgroundColor: terracotta), SizedBox(width: 8), Text('Tidak tersedia / sedang digunakan')]),
+            const SizedBox(height: 8),
+            Text('Produk: ${selectedProduct ?? '-'}', style: const TextStyle(color: Color(0xFF78695D), fontSize: 12)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        PrimaryButton('Tandai tanggal tidak tersedia', _addBlockedDate),
+        const SizedBox(height: 20),
+        const Text('Tanggal yang diblokir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: teks)),
+        const SizedBox(height: 10),
+        if (sortedDates.isEmpty)
+          _surface(const Padding(padding: EdgeInsets.all(18), child: Text('Belum ada tanggal yang diblokir.', textAlign: TextAlign.center, style: TextStyle(color: Color(0xFF78695D)))))
+        else
+          ...sortedDates.map((date) => Container(
+            margin: const EdgeInsets.only(bottom: 9),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14)),
+            child: ListTile(
+              leading: const CircleAvatar(backgroundColor: Color(0xFFF0DED0), child: Icon(Icons.event_busy_outlined, color: terracotta)),
+              title: Text(_format(date), style: const TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: Text(selectedProduct ?? 'Produk', style: const TextStyle(fontSize: 12)),
+              trailing: IconButton(tooltip: 'Buka tanggal', icon: const Icon(Icons.close, color: kayu), onPressed: () => setState(() => blockedDatesByProduct[selectedProduct ?? '']?.remove(date))),
+            ),
+          )),
+        const SizedBox(height: 8),
+        const Text('Prototype: perubahan tanggal masih tersimpan sementara di aplikasi. Hubungkan ke tabel AVAILABILITY agar tersimpan di database.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D), height: 1.4)),
+      ]),
+    );
+  }
+}
+
+class OwnerProductsPage extends StatelessWidget {
+  final List<Map<String, String>> products;
+  final VoidCallback onAdd, onChanged;
+  const OwnerProductsPage({super.key, required this.products, required this.onAdd, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 90), children: [
+    const Text('Produk Saya', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks)),
+    const SizedBox(height: 5),
+    const Text('Kelola katalog produk budaya yang kamu sewakan.', style: TextStyle(color: Color(0xFF78695D))),
+    const SizedBox(height: 16),
+    Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(14)),
+      child: Row(children: [const Icon(Icons.info_outline, color: kayu), const SizedBox(width: 9),
+        Expanded(child: Text('${products.length} produk terdaftar · Pastikan stok dan harga selalu akurat.', style: const TextStyle(color: teks, fontSize: 12)))])),
+    const SizedBox(height: 14),
+    ...products.map((p) => Container(
+      margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: kayu.withValues(alpha: .10))),
+      child: Row(children: [
+        Container(width: 64, height: 74, decoration: BoxDecoration(color: const Color(0xFFE8D9C7), borderRadius: BorderRadius.circular(12)),
+          child: const Icon(Icons.checkroom_outlined, color: kayu, size: 30)),
+        const SizedBox(width: 12),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(p['name'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, color: teks)),
+          const SizedBox(height: 3),
+          Text(p['category'] ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+          const SizedBox(height: 5),
+          Text('${_rupiah(int.tryParse(p['price'] ?? '') ?? 0)}/hari', style: const TextStyle(fontWeight: FontWeight.bold, color: kayu)),
+          Text('Stok ${p['stock']} · ${p['status']}', style: const TextStyle(fontSize: 11, color: zaitun)),
+          if ((p['condition'] ?? '').isNotEmpty) Text('Kondisi: ${p['condition']}', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+          if ((p['deposit'] ?? '0') != '0') Text('Deposit ${_rupiah(int.tryParse(p['deposit'] ?? '') ?? 0)}', style: const TextStyle(fontSize: 11, color: terracotta)),
+          if ((p['location'] ?? '').isNotEmpty) Text(p['location']!, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+        ])),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert, color: kayu),
+          onSelected: (v) {
+            if (v == 'toggle') { p['status'] = p['status'] == 'Tersedia' ? 'Disembunyikan' : 'Tersedia'; onChanged(); }
+            if (v == 'delete') { products.remove(p); onChanged(); }
+          },
+          itemBuilder: (_) => [
+            PopupMenuItem(value: 'toggle', child: Text(p['status'] == 'Tersedia' ? 'Sembunyikan produk' : 'Tampilkan produk')),
+            const PopupMenuItem(value: 'delete', child: Text('Hapus produk')),
+          ],
+        ),
+      ]),
+    )),
+    OutlinedButton.icon(onPressed: onAdd, icon: const Icon(Icons.add, color: kayu), label: const Text('Tambah produk', style: TextStyle(color: kayu)),
+      style: OutlinedButton.styleFrom(side: const BorderSide(color: kayu), padding: const EdgeInsets.all(14))),
+  ]);
+}
+
+class OwnerOrdersPage extends StatelessWidget {
+  final List<Map<String, String>> orders;
+  final VoidCallback onChanged;
+  const OwnerOrdersPage({super.key, required this.orders, required this.onChanged});
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 24), children: [
+    const Text('Pesanan Masuk', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks)),
+    const SizedBox(height: 5),
+    const Text('Konfirmasi permintaan sewa dan pantau status pengembalian.', style: TextStyle(color: Color(0xFF78695D))),
+    const SizedBox(height: 16),
+    ...orders.map((o) => _OwnerOrderTile(order: o, onChanged: onChanged)),
+    if (orders.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Belum ada pesanan masuk.', textAlign: TextAlign.center)),
+  ]);
+}
+
+class _OwnerOrderTile extends StatelessWidget {
+  final Map<String, String> order;
+  final bool compact;
+  final VoidCallback onChanged;
+  const _OwnerOrderTile({required this.order, this.compact = false, required this.onChanged});
+  @override
+  Widget build(BuildContext context) {
+    final status = order['status'] ?? '';
+    final pending = status == 'Menunggu Konfirmasi';
+    final color = pending ? terracotta : status == 'Ditolak' ? Colors.red.shade700 : zaitun;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10), padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: kayu.withValues(alpha: .10))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          CircleAvatar(backgroundColor: const Color(0xFFF0DED0), child: const Icon(Icons.person_outline, color: kayu)),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(order['customer'] ?? '', style: const TextStyle(fontWeight: FontWeight.w900, color: teks)),
+            Text(order['product'] ?? '', style: const TextStyle(fontSize: 12, color: Color(0xFF78695D))),
+          ])),
+          if (!compact) const Icon(Icons.chevron_right, color: terracotta),
         ]),
-      );
+        const SizedBox(height: 10),
+        Row(children: [const Icon(Icons.calendar_month_outlined, size: 15, color: terracotta), const SizedBox(width: 5), Text(order['date'] ?? '', style: const TextStyle(fontSize: 12))]),
+        const SizedBox(height: 5),
+        Row(children: [
+          Expanded(child: Text(_rupiah(int.tryParse(order['total'] ?? '') ?? 0), style: const TextStyle(fontWeight: FontWeight.w900, color: kayu))),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5), decoration: BoxDecoration(color: color.withValues(alpha: .12), borderRadius: BorderRadius.circular(20)),
+            child: Text(status, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold))),
+        ]),
+        if (pending && !compact) ...[
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: OutlinedButton(onPressed: () { order['status'] = 'Ditolak'; onChanged(); notice(context, 'Pesanan ditolak (demo).'); },
+              style: OutlinedButton.styleFrom(foregroundColor: kayu, side: const BorderSide(color: kayu)), child: const Text('Tolak'))),
+            const SizedBox(width: 10),
+            Expanded(child: FilledButton(onPressed: () { order['status'] = 'Dikonfirmasi'; onChanged(); notice(context, 'Pesanan dikonfirmasi (demo).'); },
+              style: FilledButton.styleFrom(backgroundColor: kayu), child: const Text('Konfirmasi'))),
+          ]),
+        ],
+      ]),
+    );
+  }
+}
+
+class OwnerReviewsPage extends StatefulWidget {
+  final String shopName;
+  const OwnerReviewsPage({super.key, required this.shopName});
+  @override
+  State<OwnerReviewsPage> createState() => _OwnerReviewsPageState();
+}
+
+class _OwnerReviewsPageState extends State<OwnerReviewsPage> {
+  String filter = 'Semua';
+  final List<Map<String, dynamic>> reviews = [
+    {'name': 'Sari Wulandari', 'product': 'Kebaya Jawa', 'date': '18 Okt 2026', 'rating': 5, 'comment': 'Kebayanya cantik dan bersih. Detail bordirnya bagus, pemilik juga ramah dan responsif.', 'reply': 'Terima kasih sudah menyewa di toko kami! Senang sekali kebayanya cocok untuk acara Anda.'},
+    {'name': 'Budi Santoso', 'product': 'Kain Tenun Bali', 'date': '16 Okt 2026', 'rating': 5, 'comment': 'Kain sesuai foto, proses sewa mudah dan pengiriman tepat waktu.', 'reply': ''},
+    {'name': 'Rina Kartika', 'product': 'Aksesori Tradisional', 'date': '14 Okt 2026', 'rating': 4, 'comment': 'Barang bagus dan terawat. Akan lebih baik kalau pilihan warna ditambah.', 'reply': ''},
+    {'name': 'Dewi Anggraini', 'product': 'Kebaya Jawa', 'date': '11 Okt 2026', 'rating': 5, 'comment': 'Sangat puas! Ukuran pas dan barang dikemas dengan rapi.', 'reply': 'Terima kasih atas ulasannya, Kak Dewi. Kami tunggu pesanan berikutnya!'},
+    {'name': 'Andi Pratama', 'product': 'Kain Tenun Bali', 'date': '8 Okt 2026', 'rating': 3, 'comment': 'Motifnya bagus, tetapi warna sedikit berbeda dari foto.', 'reply': ''},
+  ];
+
+  Future<void> _replyTo(Map<String, dynamic> review) async {
+    final controller = TextEditingController(text: review['reply'] as String? ?? '');
+    final result = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: gading,
+        title: const Text('Balas ulasan', style: TextStyle(color: kayu, fontWeight: FontWeight.w900)),
+        content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Ulasan dari ${review['name']}', style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          Text(review['comment'] as String, style: const TextStyle(color: Color(0xFF78695D))),
+          const SizedBox(height: 14),
+          TextField(controller: controller, maxLines: 4, decoration: const InputDecoration(hintText: 'Tulis balasan yang sopan...')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, controller.text.trim()), style: FilledButton.styleFrom(backgroundColor: kayu), child: const Text('Simpan balasan')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result != null && result.isNotEmpty && mounted) {
+      setState(() => review['reply'] = result);
+      notice(context, 'Balasan tersimpan di prototype.');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final filtered = reviews.where((r) => filter == 'Semua' || '${r['rating']} bintang' == filter).toList();
+    return Scaffold(
+      backgroundColor: gading,
+      appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: const Text('Rating & Ulasan', style: TextStyle(fontWeight: FontWeight.w900))),
+      body: ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 28), children: [
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4E2F21), Color(0xFFA66A43)]), borderRadius: BorderRadius.circular(20)),
+          child: Row(children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Reputasi toko', style: TextStyle(color: gading, fontSize: 13)),
+              const SizedBox(height: 5),
+              const Row(crossAxisAlignment: CrossAxisAlignment.end, children: [Text('4.8', style: TextStyle(color: gading, fontSize: 42, height: 1, fontWeight: FontWeight.w900)), SizedBox(width: 7), Padding(padding: EdgeInsets.only(bottom: 5), child: Text('/ 5.0', style: TextStyle(color: Color(0xFFF1E5D6))))]),
+              const SizedBox(height: 7),
+              const Row(children: [Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_half_rounded, color: Color(0xFFFFD27A), size: 18)]),
+              const SizedBox(height: 5),
+              const Text('Berdasarkan 126 ulasan · contoh demo', style: TextStyle(color: Color(0xFFF1E5D6), fontSize: 11)),
+            ])),
+            const Icon(Icons.reviews_outlined, color: Color(0x44F8F3E9), size: 82),
+          ]),
+        ),
+        const SizedBox(height: 18),
+        _surface(Column(children: [
+          _ratingBar(5, 92, '73%'),
+          const SizedBox(height: 10),
+          _ratingBar(4, 24, '19%'),
+          const SizedBox(height: 10),
+          _ratingBar(3, 7, '6%'),
+          const SizedBox(height: 10),
+          _ratingBar(2, 2, '1.5%'),
+          const SizedBox(height: 10),
+          _ratingBar(1, 1, '0.5%'),
+        ])),
+        const SizedBox(height: 22),
+        const Text('Komentar penyewa', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: teks)),
+        const SizedBox(height: 10),
+        SingleChildScrollView(scrollDirection: Axis.horizontal, child: Row(children: [
+          for (final item in ['Semua', '5 bintang', '4 bintang', '3 bintang', '2 bintang', '1 bintang'])
+            Padding(padding: const EdgeInsets.only(right: 8), child: ChoiceChip(label: Text(item), selected: filter == item, selectedColor: const Color(0xFFE8D5C2), backgroundColor: Colors.white, labelStyle: TextStyle(color: filter == item ? kayu : teks, fontWeight: FontWeight.w700), side: BorderSide(color: kayu.withValues(alpha: .15)), onSelected: (_) => setState(() => filter = item))),
+        ])),
+        const SizedBox(height: 12),
+        ...filtered.map((review) => _ReviewCard(review: review, onReply: () => _replyTo(review))),
+        if (filtered.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Belum ada ulasan pada kategori ini.', textAlign: TextAlign.center)),
+        const SizedBox(height: 8),
+        const Text('Rating dan komentar pada halaman ini adalah data contoh. Nantinya data dapat diambil dari ulasan penyewa setelah transaksi selesai.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF78695D))),
+      ]),
+    );
+  }
+
+  Widget _ratingBar(int stars, int count, String percent) => Row(children: [
+    SizedBox(width: 54, child: Row(children: [Text('$stars', style: const TextStyle(fontWeight: FontWeight.w800)), const Icon(Icons.star_rounded, color: terracotta, size: 16)])),
+    Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: count / 126, minHeight: 8, backgroundColor: const Color(0xFFEDE2D0), color: terracotta))),
+    const SizedBox(width: 10), SizedBox(width: 44, child: Text(percent, textAlign: TextAlign.end, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D)))),
+  ]);
+}
+
+class _ReviewCard extends StatelessWidget {
+  final Map<String, dynamic> review;
+  final VoidCallback onReply;
+  const _ReviewCard({required this.review, required this.onReply});
+  @override
+  Widget build(BuildContext context) {
+    final rating = review['rating'] as int;
+    final reply = review['reply'] as String? ?? '';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(17), border: Border.all(color: kayu.withValues(alpha: .10))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          CircleAvatar(backgroundColor: const Color(0xFFEDE2D0), child: Text((review['name'] as String).substring(0, 1), style: const TextStyle(color: kayu, fontWeight: FontWeight.w900))),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(review['name'] as String, style: const TextStyle(fontWeight: FontWeight.w900, color: teks)),
+            const SizedBox(height: 3),
+            Text('${review['product']} · ${review['date']}', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+          ])),
+          Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5), decoration: BoxDecoration(color: const Color(0xFFF5E9D8), borderRadius: BorderRadius.circular(10)), child: Row(children: [Text('$rating.0', style: const TextStyle(color: kayu, fontWeight: FontWeight.w900, fontSize: 12)), const SizedBox(width: 3), const Icon(Icons.star_rounded, size: 14, color: terracotta)])),
+        ]),
+        const SizedBox(height: 11),
+        Row(children: List.generate(5, (i) => Icon(i < rating ? Icons.star_rounded : Icons.star_outline_rounded, size: 17, color: terracotta))),
+        const SizedBox(height: 7),
+        Text(review['comment'] as String, style: const TextStyle(height: 1.45, color: teks)),
+        if (reply.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Container(width: double.infinity, padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: const Color(0xFFF8F3E9), borderRadius: BorderRadius.circular(12)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('Balasan toko', style: TextStyle(color: kayu, fontWeight: FontWeight.w900, fontSize: 12)), const SizedBox(height: 4), Text(reply, style: const TextStyle(fontSize: 12, height: 1.4, color: teks))])),
+        ],
+        const SizedBox(height: 8),
+        Align(alignment: Alignment.centerRight, child: TextButton.icon(onPressed: onReply, icon: const Icon(Icons.reply_rounded, size: 17), label: Text(reply.isEmpty ? 'Balas ulasan' : 'Edit balasan'), style: TextButton.styleFrom(foregroundColor: kayu))),
+      ]),
+    );
+  }
+}
+
+class OwnerShopProfilePage extends StatefulWidget {
+  final String shopName;
+  const OwnerShopProfilePage({super.key, required this.shopName});
+  @override
+  State<OwnerShopProfilePage> createState() => _OwnerShopProfilePageState();
+}
+
+class _OwnerShopProfilePageState extends State<OwnerShopProfilePage> {
+  late final TextEditingController nameController = TextEditingController(text: widget.shopName);
+  final addressController = TextEditingController(text: 'Yogyakarta, Indonesia');
+  final hoursController = TextEditingController(text: 'Senin–Sabtu, 09.00–17.00');
+  final descriptionController = TextEditingController(text: 'Menyewakan busana dan perlengkapan budaya Indonesia yang terawat untuk acara adat, wisuda, dan kegiatan budaya.');
+  @override
+  void dispose() { nameController.dispose(); addressController.dispose(); hoursController.dispose(); descriptionController.dispose(); super.dispose(); }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: gading,
+    appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: const Text('Profil Toko Publik', style: TextStyle(fontWeight: FontWeight.w900))),
+    body: ListView(padding: const EdgeInsets.all(18), children: [
+      Container(height: 145, decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4E2F21), Color(0xFFA66A43)])), child: Stack(children: [const Positioned(right: 16, top: 16, child: Icon(Icons.spa_outlined, size: 74, color: Color(0x44F8F3E9))), Positioned(left: 18, bottom: 18, child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: const [Text('RAGAMNUSA', style: TextStyle(color: gading, letterSpacing: 2, fontWeight: FontWeight.w900)), SizedBox(height: 5), Text('Jaga budaya, jaga Indonesia.', style: TextStyle(color: gading, fontSize: 17, fontWeight: FontWeight.w800))]))])),
+      const SizedBox(height: 18),
+      _surface(Column(children: [
+        const CircleAvatar(radius: 31, backgroundColor: Color(0xFFEDE2D0), child: Icon(Icons.storefront_rounded, size: 32, color: kayu)),
+        const SizedBox(height: 9),
+        Text(nameController.text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, color: kayu, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 4),
+        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.star_rounded, color: terracotta, size: 18), Text(' 4.8  ·  126 ulasan demo', style: TextStyle(color: Color(0xFF78695D), fontSize: 12))]),
+      ])),
+      const SizedBox(height: 18),
+      const Text('Informasi toko', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 10),
+      TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Nama toko', prefixIcon: Icon(Icons.storefront_outlined))),
+      const SizedBox(height: 10),
+      TextField(controller: addressController, decoration: const InputDecoration(labelText: 'Alamat toko', prefixIcon: Icon(Icons.location_on_outlined))),
+      const SizedBox(height: 10),
+      TextField(controller: hoursController, decoration: const InputDecoration(labelText: 'Jam operasional', prefixIcon: Icon(Icons.schedule_outlined))),
+      const SizedBox(height: 10),
+      TextField(controller: descriptionController, maxLines: 4, decoration: const InputDecoration(labelText: 'Deskripsi toko', alignLabelWithHint: true)),
+      const SizedBox(height: 16),
+      PrimaryButton('Simpan perubahan', () { setState(() {}); notice(context, 'Perubahan ditampilkan di prototype. Data belum tersimpan permanen.'); }),
+      const SizedBox(height: 8),
+      const Text('Foto sampul dan logo dapat ditambahkan saat integrasi pemilih gambar.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+    ]),
+  );
+}
+
+class OwnerPerformancePage extends StatelessWidget {
+  const OwnerPerformancePage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: gading,
+    appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: const Text('Statistik Performa', style: TextStyle(fontWeight: FontWeight.w900))),
+    body: ListView(padding: const EdgeInsets.all(18), children: [
+      const Text('Performa toko', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 4), const Text('Ringkasan contoh untuk membantu mengevaluasi bisnis.', style: TextStyle(color: Color(0xFF78695D))),
+      const SizedBox(height: 16),
+      Row(children: [const Expanded(child: _OwnerMetric(icon: Icons.receipt_long_outlined, label: 'Penyewaan selesai', value: '38')), const SizedBox(width: 10), const Expanded(child: _OwnerMetric(icon: Icons.star_outline_rounded, label: 'Rating rata-rata', value: '4.8/5'))]),
+      const SizedBox(height: 10),
+      Row(children: [const Expanded(child: _OwnerMetric(icon: Icons.trending_up_rounded, label: 'Pendapatan demo', value: 'Rp12 jt')), const SizedBox(width: 10), const Expanded(child: _OwnerMetric(icon: Icons.inventory_2_outlined, label: 'Produk aktif', value: '3'))]),
+      const SizedBox(height: 22),
+      const Text('Aktivitas penyewaan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 12),
+      _surface(Column(children: [
+        _performanceBar('Mei', .42, '16 sewa'), const SizedBox(height: 15),
+        _performanceBar('Juni', .64, '24 sewa'), const SizedBox(height: 15),
+        _performanceBar('Juli', .52, '20 sewa'), const SizedBox(height: 15),
+        _performanceBar('Agustus', .84, '32 sewa'), const SizedBox(height: 15),
+        _performanceBar('September', 1, '38 sewa'),
+      ])),
+      const SizedBox(height: 22),
+      const Text('Produk populer', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 10),
+      _surface(Column(children: [
+        _popularProduct('Kebaya Jawa', '18 kali disewa', .86), const Divider(height: 22),
+        _popularProduct('Kain Tenun Bali', '12 kali disewa', .62), const Divider(height: 22),
+        _popularProduct('Aksesori Tradisional', '8 kali disewa', .42),
+      ])),
+      const SizedBox(height: 12),
+      const Text('Seluruh angka dan grafik merupakan data simulasi, bukan laporan transaksi nyata.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+    ]),
+  );
+
+  Widget _performanceBar(String month, double value, String label) => Row(children: [SizedBox(width: 82, child: Text(month, style: const TextStyle(fontSize: 12, color: teks))), Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(10), child: LinearProgressIndicator(value: value, minHeight: 10, backgroundColor: const Color(0xFFEDE2D0), color: terracotta))), const SizedBox(width: 10), SizedBox(width: 58, child: Text(label, textAlign: TextAlign.end, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))))]);
+  Widget _popularProduct(String name, String count, double value) => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [Expanded(child: Text(name, style: const TextStyle(fontWeight: FontWeight.w800, color: teks))), Text(count, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D)))]), const SizedBox(height: 8), ClipRRect(borderRadius: BorderRadius.circular(10), child: LinearProgressIndicator(value: value, minHeight: 7, backgroundColor: const Color(0xFFEDE2D0), color: zaitun))]);
+}
+
+class OwnerVerificationPage extends StatelessWidget {
+  const OwnerVerificationPage({super.key});
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: gading,
+    appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: const Text('Verifikasi Toko', style: TextStyle(fontWeight: FontWeight.w900))),
+    body: ListView(padding: const EdgeInsets.all(18), children: [
+      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF4E2F21), Color(0xFFA66A43)]), borderRadius: BorderRadius.circular(20)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.verified_user_outlined, color: gading, size: 36), SizedBox(height: 12), Text('Bangun kepercayaan penyewa', style: TextStyle(color: gading, fontSize: 21, fontWeight: FontWeight.w900)), SizedBox(height: 6), Text('Lengkapi informasi verifikasi agar penyewa merasa lebih aman saat menyewa produk budaya.', style: TextStyle(color: Color(0xFFF1E5D6), height: 1.4))])),
+      const SizedBox(height: 18),
+      _surface(Column(children: [
+        _verificationRow(Icons.person_outline, 'Identitas pemilik', 'Belum diverifikasi', false), const Divider(height: 1),
+        _verificationRow(Icons.storefront_outlined, 'Informasi toko', 'Perlu ditinjau', false), const Divider(height: 1),
+        _verificationRow(Icons.location_on_outlined, 'Alamat toko', 'Belum diverifikasi', false),
+      ])),
+      const SizedBox(height: 16),
+      PrimaryButton('Mulai verifikasi', () => notice(context, 'Alur unggah dokumen dan verifikasi akan ditambahkan nanti.')),
+      const SizedBox(height: 10),
+      const Text('Prototype ini tidak meminta atau menyimpan dokumen identitas. Status verifikasi masih berupa contoh.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF78695D))),
+    ]),
+  );
+  Widget _verificationRow(IconData icon, String title, String status, bool done) => ListTile(leading: CircleAvatar(backgroundColor: const Color(0xFFEDE2D0), child: Icon(icon, color: kayu)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: teks)), subtitle: Text(status, style: const TextStyle(fontSize: 12, color: Color(0xFF78695D))), trailing: Icon(done ? Icons.check_circle : Icons.hourglass_empty_rounded, color: done ? zaitun : terracotta));
+}
+
+class OwnerFinancePage extends StatelessWidget {
+  const OwnerFinancePage({super.key});
+  @override
+  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 24), children: [
+    const Text('Keuangan', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks)),
+    const SizedBox(height: 5),
+    const Text('Pantau pendapatan dan riwayat transaksi toko.', style: TextStyle(color: Color(0xFF78695D))),
+    const SizedBox(height: 18),
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
+      gradient: const LinearGradient(colors: [Color(0xFF4E2F21), Color(0xFFA66A43)]), borderRadius: BorderRadius.circular(20)),
+      child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('Saldo tersedia · DEMO', style: TextStyle(color: gading)),
+        SizedBox(height: 8),
+        Text('Rp4.750.000', style: TextStyle(color: gading, fontSize: 28, fontWeight: FontWeight.w900)),
+        SizedBox(height: 5),
+        Text('Angka simulasi, belum terhubung ke pembayaran nyata.', style: TextStyle(color: Color(0xFFF1E5D6), fontSize: 11)),
+      ]),
+    ),
+    const SizedBox(height: 14),
+    Row(children: [
+      const Expanded(child: _OwnerMetric(icon: Icons.trending_up, label: 'Pendapatan bulan ini', value: 'Rp12 jt')),
+      const SizedBox(width: 10),
+      const Expanded(child: _OwnerMetric(icon: Icons.hourglass_bottom, label: 'Menunggu pencairan', value: 'Rp2,1 jt')),
+    ]),
+    const SizedBox(height: 20),
+    const Text('Riwayat transaksi', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+    const SizedBox(height: 8),
+    _surface(Column(children: [
+      _summaryRow('Pembayaran sewa · Sari Wulandari', '+Rp450.000'),
+      const Divider(),
+      _summaryRow('Pencairan dana · Bank demo', '-Rp1.000.000'),
+      const Divider(),
+      _summaryRow('Pembayaran sewa · Budi Santoso', '+Rp300.000'),
+      const Divider(),
+      _summaryRow('Biaya layanan platform', '-Rp25.000'),
+    ])),
+    const SizedBox(height: 14),
+    PrimaryButton('Ajukan Pencairan', () => notice(context, 'Fitur pencairan perlu integrasi rekening dan backend.')),
+  ]);
 }
 
 class ProfilePage extends StatelessWidget {
@@ -1085,7 +1816,7 @@ class _PaymentPageState extends State<PaymentPage> {
         const SizedBox(height: 20),
         const Text('Pilih pengiriman / kurir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
-        DropdownButtonFormField<String>(value: courier, isExpanded: true, decoration: const InputDecoration(labelText: 'Layanan kurir'), items: couriers.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(), onChanged: (v) => setState(() => courier = v ?? courier)),
+        DropdownButtonFormField<String>(initialValue: courier, isExpanded: true, decoration: const InputDecoration(labelText: 'Layanan kurir'), items: couriers.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(), onChanged: (v) => setState(() => courier = v ?? courier)),
         const SizedBox(height: 10),
         if (courier != 'Ambil sendiri') SegmentedButton<String>(segments: const [ButtonSegment(value: 'Reguler', label: Text('Reguler'), icon: Icon(Icons.local_shipping_outlined)), ButtonSegment(value: 'Express', label: Text('Express'), icon: Icon(Icons.bolt))], selected: {speed}, onSelectionChanged: (v) => setState(() => speed = v.first)),
         const SizedBox(height: 6),
@@ -1349,7 +2080,7 @@ class _HandoverPageState extends State<HandoverPage> {
     return Scaffold(appBar: AppBar(title: const Text('Serah Terima & Pengembalian')), body: ListView(padding: const EdgeInsets.all(20), children: [
       Text(widget.productTitle, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)), const SizedBox(height: 6),
       const Text('Isi kondisi barang saat pengembalian. Foto bukti dapat ditambahkan setelah fitur unggah dihubungkan.'), const SizedBox(height: 16),
-      DropdownButtonFormField<String>(value: condition, isExpanded: true, decoration: const InputDecoration(labelText: 'Kondisi barang'), items: const ['Baik / tidak ada kerusakan', 'Ada kerusakan'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (v) => setState(() { condition = v ?? condition; if (condition != 'Ada kerusakan') damageCost.text = '0'; })),
+      DropdownButtonFormField<String>(initialValue: condition, isExpanded: true, decoration: const InputDecoration(labelText: 'Kondisi barang'), items: const ['Baik / tidak ada kerusakan', 'Ada kerusakan'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (v) => setState(() { condition = v ?? condition; if (condition != 'Ada kerusakan') damageCost.text = '0'; })),
       if (condition == 'Ada kerusakan') ...[
         const SizedBox(height: 12), DropdownButtonFormField<String>(key: const ValueKey('damage-type-dropdown'), initialValue: damage, isExpanded: true, decoration: const InputDecoration(labelText: 'Jenis kerusakan'), items: const ['Noda', 'Noda membandel', 'Sobek', 'Berlubang', 'Jahitan lepas', 'Bagian/aksesori hilang', 'Patah atau retak', 'Warna luntur', 'Kerusakan lainnya'].map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(), onChanged: (v) => setState(() => damage = v ?? damage)),
         const SizedBox(height: 12), TextField(controller: damageCost, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Estimasi biaya berdasarkan bukti (Rp)'), onChanged: (_) => setState(() {})),
