@@ -9,6 +9,15 @@ const terracotta = Color(0xFFA66A43);
 const zaitun = Color(0xFF78805B);
 const teks = Color(0xFF302820);
 
+const List<String> ragamNusaCategories = [
+  'Pakaian Adat',
+  'Alat Musik Tradisional',
+  'Properti Event & Wedding',
+  'Properti Kuliner',
+  'Perlengkapan Workshop Kriya',
+  'Transportasi Tradisional',
+];
+
 class RagamNusaApp extends StatelessWidget {
   const RagamNusaApp({super.key});
   @override
@@ -39,6 +48,56 @@ class RagamNusaApp extends StatelessWidget {
 
 void notice(BuildContext context, String text) =>
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+
+// Data ulasan bersama untuk prototype: ulasan yang dikirim penyewa akan langsung muncul
+// pada halaman Rating & Ulasan pemilik selama aplikasi masih berjalan.
+final List<Map<String, dynamic>> ragamNusaReviews = [
+  {'name': 'Sari Wulandari', 'product': 'Paket Busana Adat Bali', 'date': '18 Okt 2026', 'rating': 5, 'comment': 'Kebayanya cantik dan bersih. Detail bordirnya bagus, pemilik juga ramah dan responsif.', 'reply': 'Terima kasih sudah menyewa di toko kami! Senang sekali kebayanya cocok untuk acara Anda.'},
+  {'name': 'Budi Santoso', 'product': 'Gamelan Mini', 'date': '16 Okt 2026', 'rating': 5, 'comment': 'Kain sesuai foto, proses sewa mudah dan pengiriman tepat waktu.', 'reply': ''},
+  {'name': 'Rina Kartika', 'product': 'Paket Alat Membatik', 'date': '14 Okt 2026', 'rating': 4, 'comment': 'Barang bagus dan terawat. Akan lebih baik kalau pilihan warna ditambah.', 'reply': ''},
+  {'name': 'Dewi Anggraini', 'product': 'Paket Busana Adat Bali', 'date': '11 Okt 2026', 'rating': 5, 'comment': 'Sangat puas! Ukuran pas dan barang dikemas dengan rapi.', 'reply': 'Terima kasih atas ulasannya, Kak Dewi. Kami tunggu pesanan berikutnya!'},
+  {'name': 'Andi Pratama', 'product': 'Gamelan Mini', 'date': '8 Okt 2026', 'rating': 3, 'comment': 'Motifnya bagus, tetapi warna sedikit berbeda dari foto.', 'reply': ''},
+];
+
+
+// Data profil lokal untuk prototype. Nilai bertahan selama aplikasi berjalan,
+// belum tersinkron ke server atau penyimpanan permanen.
+final Map<String, String> renterProfileData = {
+  'name': 'Sahabat Nusantara', 'phone': '', 'email': '', 'address': '',
+  'city': '', 'notes': '',
+};
+final Map<String, String> ownerProfileData = {
+  'name': 'Pemilik Budaya', 'phone': '', 'email': '', 'store': 'Toko Sari Budaya',
+  'address': 'Yogyakarta, Indonesia', 'hours': 'Senin–Sabtu, 09.00–17.00',
+  'description': 'Menyewakan busana dan perlengkapan budaya Indonesia yang terawat.',
+  'rules': 'Gunakan barang dengan hati-hati. Pengembalian mengikuti tanggal pada pesanan. Kerusakan perlu didokumentasikan dan dibahas bersama.',
+};
+final Map<String, bool> renterPreferences = {
+  'chat': true, 'delivery': true, 'pickup': false, 'reminder': true,
+};
+
+// Chat prototype bersama: percakapan terlihat dari sisi penyewa dan pemilik
+// selama aplikasi berjalan. Untuk produksi, ganti penyimpanan lokal ini dengan backend.
+final List<Map<String, dynamic>> ragamNusaChats = [
+  {'id': 'chat-sari-kebaya', 'customer': 'Sari Wulandari', 'owner': 'Pemilik Budaya', 'product': 'Paket Busana Adat Bali', 'messages': <Map<String, String>>[
+    {'sender': 'renter', 'text': 'Halo, apakah Kebaya Jawa tersedia untuk akhir pekan?','time':'09.12'},
+    {'sender': 'owner', 'text': 'Halo Kak Sari, masih tersedia. Kakak butuh tanggal berapa?','time':'09.14'},
+  ]},
+  {'id': 'chat-budi-tenun', 'customer': 'Budi Santoso', 'owner': 'Pemilik Budaya', 'product': 'Gamelan Mini', 'messages': <Map<String, String>>[
+    {'sender': 'renter', 'text': 'Apakah kain bisa diambil langsung?','time':'Kemarin'},
+  ]},
+];
+
+Map<String, dynamic> getOrCreateRagamNusaChat(String product, {String customer = 'Sahabat Nusantara'}) {
+  final found = ragamNusaChats.where((c) => c['product'] == product && c['customer'] == customer);
+  if (found.isNotEmpty) return found.first;
+  final thread = <String, dynamic>{
+    'id': 'chat-${DateTime.now().microsecondsSinceEpoch}', 'customer': customer,
+    'owner': 'Pemilik Budaya', 'product': product, 'messages': <Map<String, String>>[],
+  };
+  ragamNusaChats.insert(0, thread);
+  return thread;
+}
 
 class PrimaryButton extends StatelessWidget {
   final String text;
@@ -568,13 +627,14 @@ class RenterHomePage extends StatefulWidget {
 class _RenterHomePageState extends State<RenterHomePage> {
   int tab = 0;
 
+
   @override
   Widget build(BuildContext context) {
     final pages = [
       RenterDashboard(name: widget.userName, onExplore: () => setState(() => tab = 1)),
       const ExplorePage(),
       const OrdersPage(),
-      ProfilePage(name: widget.userName, role: 'Penyewa'),
+      RenterProfilePage(name: widget.userName),
     ];
 
     return Scaffold(
@@ -585,6 +645,11 @@ class _RenterHomePageState extends State<RenterHomePage> {
         title: const Text('RAGAMNUSA',
             style: TextStyle(color: kayu, fontWeight: FontWeight.w900, letterSpacing: 1)),
         actions: [
+          IconButton(
+            tooltip: 'Chat dengan pemilik',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ChatInboxPage(isOwner: false, currentCustomer: widget.userName))),
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: kayu),
+          ),
           IconButton(
             tooltip: 'Notifikasi',
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage())),
@@ -618,7 +683,7 @@ class RenterDashboard extends StatelessWidget {
   Widget build(BuildContext context) => ListView(
     padding: const EdgeInsets.fromLTRB(18, 4, 18, 24),
     children: [
-      Text('Halo, $name 👋', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
+      Text('Halo, $name ', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
       const SizedBox(height: 5),
       const Text('Temukan perlengkapan budaya untuk momen spesialmu.',
           style: TextStyle(color: Color(0xFF76685C), height: 1.4)),
@@ -669,14 +734,16 @@ class RenterDashboard extends StatelessWidget {
       _SectionTitle(title: 'Kategori Populer', action: 'Lihat semua', onTap: onExplore),
       const SizedBox(height: 12),
       GridView.count(
-        crossAxisCount: 4, shrinkWrap: true,
+        crossAxisCount: 3, shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: .82,
+        crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: .92,
         children: const [
           _CategoryTile('Pakaian\nAdat', Icons.checkroom_outlined),
-          _CategoryTile('Kostum\nTari', Icons.theater_comedy_outlined),
-          _CategoryTile('Kerajinan', Icons.spa_outlined),
-          _CategoryTile('Alat\nMusik', Icons.music_note_outlined),
+          _CategoryTile('Alat Musik\nTradisional', Icons.music_note_outlined),
+          _CategoryTile('Properti Event\n& Wedding', Icons.celebration_outlined),
+          _CategoryTile('Properti\nKuliner', Icons.restaurant_outlined),
+          _CategoryTile('Workshop\nKriya', Icons.brush_outlined),
+          _CategoryTile('Transportasi\nTradisional', Icons.directions_bike_outlined),
         ],
       ),
       const SizedBox(height: 24),
@@ -687,9 +754,17 @@ class RenterDashboard extends StatelessWidget {
         child: ListView(
           scrollDirection: Axis.horizontal,
           children: const [
-            _ProductMiniCard(title: 'Kebaya Jawa', category: 'Pakaian adat', price: 'Rp150.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600'),
+            _ProductMiniCard(title: 'Paket Busana Adat Bali', category: 'Pakaian Adat', price: 'Rp150.000', location: 'Denpasar', imageUrl: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600'),
             SizedBox(width: 12),
-            _ProductMiniCard(title: 'Kain Tenun', category: 'Kain tradisional', price: 'Rp100.000', location: 'Bali', imageUrl: 'https://images.unsplash.com/photo-1604881988758-f76ad2f7aac1?w=600'),
+            _ProductMiniCard(title: 'Gamelan Mini', category: 'Alat Musik Tradisional', price: 'Rp250.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600'),
+            SizedBox(width: 12),
+            _ProductMiniCard(title: 'Gebyok Pelaminan Jawa', category: 'Properti Event & Wedding', price: 'Rp750.000', location: 'Surakarta', imageUrl: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600'),
+            SizedBox(width: 12),
+            _ProductMiniCard(title: 'Set Alat Saji Tumpeng', category: 'Properti Kuliner', price: 'Rp100.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600'),
+            SizedBox(width: 12),
+            _ProductMiniCard(title: 'Paket Alat Membatik', category: 'Perlengkapan Workshop Kriya', price: 'Rp125.000', location: 'Pekalongan', imageUrl: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600'),
+            SizedBox(width: 12),
+            _ProductMiniCard(title: 'Andong Tradisional', category: 'Transportasi Tradisional', price: 'Rp500.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600'),
           ],
         ),
       ),
@@ -748,6 +823,20 @@ class _ProductMiniCard extends StatelessWidget {
   );
 }
 
+class _CatalogItem {
+  final String title, category, price, location, province, imageUrl;
+  const _CatalogItem(this.title, this.category, this.price, this.location, this.province, this.imageUrl);
+}
+
+const List<_CatalogItem> _catalogItems = [
+  _CatalogItem('Paket Busana Adat Bali', 'Pakaian Adat', '150000', 'Denpasar', 'Bali', 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600'),
+  _CatalogItem('Gamelan Mini', 'Alat Musik Tradisional', '250000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600'),
+  _CatalogItem('Gebyok Pelaminan Jawa', 'Properti Event & Wedding', '750000', 'Surakarta', 'Jawa Tengah', 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600'),
+  _CatalogItem('Set Alat Saji Tumpeng Tradisional', 'Properti Kuliner', '100000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600'),
+  _CatalogItem('Paket Alat Membatik', 'Perlengkapan Workshop Kriya', '125000', 'Pekalongan', 'Jawa Tengah', 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600'),
+  _CatalogItem('Andong Tradisional', 'Transportasi Tradisional', '500000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600'),
+];
+
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
   @override
@@ -756,50 +845,211 @@ class ExplorePage extends StatefulWidget {
 
 class _ExplorePageState extends State<ExplorePage> {
   String category = 'Semua';
-  final categories = const ['Semua', 'Pakaian Adat', 'Kostum Tari', 'Kerajinan', 'Kain Tradisional', 'Alat Musik'];
+  String query = '';
+  String province = 'Seluruh Indonesia';
+  final categories = ['Semua', ...ragamNusaCategories];
+  final provinces = const ['Seluruh Indonesia', 'Bali', 'DI Yogyakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Kalimantan Barat', 'Kalimantan Selatan', 'Lampung', 'Nusa Tenggara Timur', 'Papua', 'Sulawesi Selatan', 'Sumatera Barat', 'Sumatera Selatan', 'Sumatera Utara'];
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(18),
-    children: [
-      const Text('Jelajahi', style: TextStyle(fontSize: 27, fontWeight: FontWeight.w900, color: teks)),
+  Widget build(BuildContext context) {
+    final shown = _catalogItems.where((p) =>
+      (category == 'Semua' || p.category == category) &&
+      (province == 'Seluruh Indonesia' || p.province == province) &&
+      ('${p.title} ${p.category} ${p.location} ${p.province}'.toLowerCase().contains(query.toLowerCase()))).toList();
+    return ListView(padding: const EdgeInsets.all(18), children: [
+      const Text('Jelajahi Budaya Nusantara', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 5),
+      const Text('Temukan enam jenis persewaan produk budaya dari berbagai daerah Indonesia.', style: TextStyle(color: Color(0xFF78695D), height: 1.4)),
       const SizedBox(height: 14),
-      TextField(decoration: InputDecoration(hintText: 'Cari kategori atau produk...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+      TextField(onChanged: (v) => setState(() => query = v), decoration: InputDecoration(hintText: 'Cari produk, kategori, atau daerah...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
+      const SizedBox(height: 12),
+      DropdownButtonFormField<String>(initialValue: province, decoration: const InputDecoration(labelText: 'Asal produk', prefixIcon: Icon(Icons.map_outlined)), items: provinces.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => province = v ?? province)),
       const SizedBox(height: 14),
-      SizedBox(height: 40, child: ListView(scrollDirection: Axis.horizontal, children: categories.map((c) => Padding(
-        padding: const EdgeInsets.only(right: 8),
-        child: ChoiceChip(label: Text(c), selected: category == c, selectedColor: const Color(0xFFE6D4C0), onSelected: (_) => setState(() => category = c)),
-      )).toList())),
-      const SizedBox(height: 10),
-      GridView.count(
-        crossAxisCount: 2, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-        crossAxisSpacing: 12, mainAxisSpacing: 14, childAspectRatio: .67,
-        children: const [
-          _ExploreProduct(title: 'Kebaya Jawa', category: 'Pakaian Adat', price: 'Rp150.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600'),
-          _ExploreProduct(title: 'Kain Tenun Bali', category: 'Kain Tradisional', price: 'Rp100.000', location: 'Bali', imageUrl: 'https://images.unsplash.com/photo-1604881988758-f76ad2f7aac1?w=600'),
-          _ExploreProduct(title: 'Kostum Tari', category: 'Kostum Tari', price: 'Rp125.000', location: 'Surabaya', imageUrl: 'https://images.unsplash.com/photo-1531058020387-3be344556be6?w=600'),
-          _ExploreProduct(title: 'Aksesori Tradisional', category: 'Kerajinan', price: 'Rp50.000', location: 'Malang', imageUrl: 'https://images.unsplash.com/photo-1610701596007-11502861dcfa?w=600'),
-        ],
+      SizedBox(
+        height: 40,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: categories.map((c) => Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(c),
+              selected: category == c,
+              selectedColor: const Color(0xFFE6D4C0),
+              onSelected: (_) => setState(() => category = c),
+            ),
+          )).toList(),
+        ),
       ),
-    ],
-  );
+      const SizedBox(height: 12),
+      Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(14)), child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.local_shipping_outlined, color: kayu), SizedBox(width: 10), Expanded(child: Text('Katalog lintas daerah Indonesia. Pengiriman antardaerah dapat dipilih sesuai jangkauan pemilik dan jasa ekspedisi; ketersediaan ongkir perlu dikonfirmasi sebelum transaksi.', style: TextStyle(color: teks, fontSize: 12, height: 1.4)))])),
+      const SizedBox(height: 14),
+      Row(children: [Expanded(child: Text('${shown.length} produk ditemukan', style: const TextStyle(fontWeight: FontWeight.w800, color: teks))), const Icon(Icons.grid_view_rounded, color: terracotta)]),
+      const SizedBox(height: 10),
+      if (shown.isEmpty) const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('Produk tidak ditemukan. Coba ubah kata kunci atau filter.')))
+      else GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: shown.length, gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14, childAspectRatio: .64), itemBuilder: (context, i) { final p = shown[i]; return _ExploreProduct(title: p.title, category: p.category, price: 'Rp${_rupiah(int.parse(p.price)).substring(2)}', location: p.location, imageUrl: p.imageUrl, province: p.province); }),
+    ]);
+  }
 }
 
 class _ExploreProduct extends StatelessWidget {
-  final String title, category, price, location, imageUrl;
-  const _ExploreProduct({required this.title, required this.category, required this.price, required this.location, required this.imageUrl});
+  final String title, category, price, location, imageUrl, province;
+
+  const _ExploreProduct({
+    required this.title,
+    required this.category,
+    required this.price,
+    required this.location,
+    required this.imageUrl,
+    this.province = '',
+  });
+
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProductDetailPage(title: title, category: category, price: price, location: location, imageUrl: imageUrl))),
-    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(15), child: Image.network(imageUrl, width: double.infinity, fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => Container(color: const Color(0xFFE8D9C7), child: const Center(child: Icon(Icons.image_outlined, size: 45, color: kayu)))))),
-      const SizedBox(height: 8),
-      Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, color: teks)),
-      Text(category, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
-      Text('$price/hari', style: const TextStyle(fontWeight: FontWeight.bold, color: kayu)),
-      Row(children: [const Icon(Icons.location_on_outlined, size: 13, color: terracotta), Expanded(child: Text(location, style: const TextStyle(fontSize: 11, color: teks)))]),
-    ]),
-  );
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ProductDetailPage(
+              title: title,
+              category: category,
+              price: price,
+              location: location,
+              imageUrl: imageUrl,
+            ),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(9),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.network(
+                        imageUrl,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            Container(
+                          color: const Color(0xFFE8D9C7),
+                          child: const Center(
+                            child: Icon(
+                              Icons.festival_outlined,
+                              size: 45,
+                              color: kayu,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: 7,
+                        top: 7,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: gading.withValues(alpha: .95),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            category,
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: kayu,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: teks,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                '$price/hari',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: kayu,
+                  fontSize: 14,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_outlined,
+                    size: 14,
+                    color: terracotta,
+                  ),
+                  Expanded(
+                    child: Text(
+                      '$location${province.isNotEmpty ? ', $province' : ''}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10, color: teks),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              const Row(
+                children: [
+                  Icon(Icons.local_shipping_outlined, size: 13, color: zaitun),
+                  SizedBox(width: 3),
+                  Text(
+                    'Tanya pengiriman',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: zaitun,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _rentalCareForCategory(String category) {
+  switch (category) {
+    case 'Pakaian Adat':
+      return 'Konfirmasi ukuran, kelengkapan aksesori, kebersihan/laundry, dan cara pengemasan agar pakaian tidak kusut atau rusak.';
+    case 'Alat Musik Tradisional':
+      return 'Periksa kelengkapan dan kondisi alat. Gunakan kotak atau bantalan pelindung; tanyakan apakah tersedia panduan penggunaan.';
+    case 'Properti Event & Wedding':
+      return 'Konfirmasi ukuran, akses lokasi, biaya angkut, tenaga pemasangan dan pembongkaran, serta jadwal persiapan acara.';
+    case 'Properti Kuliner':
+      return 'Konfirmasi bahan alat, jumlah komponen, kebersihan, keamanan kontak pangan, serta aturan pencucian dan pengembalian.';
+    case 'Perlengkapan Workshop Kriya':
+      return 'Periksa jumlah alat dan kelengkapannya. Tanyakan petunjuk penggunaan serta apakah bahan praktik termasuk atau dibeli terpisah.';
+    case 'Transportasi Tradisional':
+      return 'Konfirmasi kapasitas, area layanan, operator/pengemudi, kondisi kendaraan, akses lokasi, dan prosedur keselamatan sebelum pemesanan.';
+    default:
+      return 'Periksa kondisi, kelengkapan, aturan penggunaan, cara pengiriman, dan ketentuan pengembalian bersama pemilik.';
+  }
 }
 
 class ProductDetailPage extends StatelessWidget {
@@ -823,10 +1073,18 @@ class ProductDetailPage extends StatelessWidget {
       const Text('Deskripsi', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
       const SizedBox(height: 6),
       const Text('Produk budaya pilihan untuk melengkapi acara, pentas seni, pemotretan, atau kegiatan spesialmu.', style: TextStyle(height: 1.5)),
+      const SizedBox(height: 16),
+      Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(16)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Informasi sebelum menyewa', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: kayu)),
+        const SizedBox(height: 8),
+        Text(_rentalCareForCategory(category), style: const TextStyle(color: teks, height: 1.45)),
+        const SizedBox(height: 8),
+        const Text('Pengiriman, ongkir, kebutuhan pemasangan, dan ketersediaan akhir perlu dikonfirmasi dengan pemilik. Deposit mengikuti ketentuan produk dan dikembalikan setelah pemeriksaan barang.', style: TextStyle(color: teks, fontSize: 12, height: 1.4)),
+      ])),
       const SizedBox(height: 22),
       PrimaryButton('Pilih Tanggal Sewa', () => Navigator.push(context, MaterialPageRoute(builder: (_) => RentalCalendarPage(title: title, price: price)))),
       const SizedBox(height: 10),
-      PrimaryButton('Chat Pemilik', () => notice(context, 'Fitur chat akan dihubungkan pada tahap berikutnya.'), outline: true),
+      PrimaryButton('Chat Pemilik', () { final thread = getOrCreateRagamNusaChat(title); Navigator.push(context, MaterialPageRoute(builder: (_) => ChatConversationPage(thread: thread, isOwner: false))); }, outline: true),
     ]),
   );
 }
@@ -910,15 +1168,74 @@ class OwnerHomePage extends StatefulWidget {
 class _OwnerHomePageState extends State<OwnerHomePage> {
   int tab = 0;
   final List<Map<String, String>> products = [
-    {'name': 'Kebaya Jawa', 'category': 'Pakaian Adat', 'price': '150000', 'deposit': '100000', 'stock': '5', 'condition': 'Sangat baik', 'location': 'Yogyakarta', 'description': 'Kebaya klasik Jawa dengan detail bordir.', 'status': 'Tersedia'},
-    {'name': 'Kain Tenun Bali', 'category': 'Kain Tradisional', 'price': '100000', 'deposit': '50000', 'stock': '3', 'condition': 'Baik', 'location': 'Denpasar', 'description': 'Kain tenun tradisional untuk acara adat.', 'status': 'Tersedia'},
-    {'name': 'Aksesori Tradisional', 'category': 'Kerajinan', 'price': '75000', 'deposit': '25000', 'stock': '8', 'condition': 'Baik', 'location': 'Yogyakarta', 'description': 'Aksesori pelengkap busana tradisional.', 'status': 'Tersedia'},
+    {'name': 'Paket Busana Adat Bali', 'category': 'Pakaian Adat', 'price': '150000', 'deposit': '100000', 'stock': '5', 'condition': 'Sangat baik', 'location': 'Denpasar', 'description': 'Paket busana adat Bali. Ukuran dan kelengkapan dikonfirmasi sebelum sewa.', 'status': 'Tersedia'},
+    {'name': 'Gamelan Mini', 'category': 'Alat Musik Tradisional', 'price': '250000', 'deposit': '300000', 'stock': '2', 'condition': 'Baik', 'location': 'Yogyakarta', 'description': 'Set gamelan mini. Harap gunakan kemasan pelindung dan tangani instrumen dengan hati-hati.', 'status': 'Tersedia'},
+    {'name': 'Gebyok Pelaminan Jawa', 'category': 'Properti Event & Wedding', 'price': '750000', 'deposit': '500000', 'stock': '1', 'condition': 'Baik', 'location': 'Surakarta', 'description': 'Properti dekorasi pelaminan. Biaya angkut, instalasi, dan bongkar dikonfirmasi terpisah.', 'status': 'Tersedia'},
+    {'name': 'Set Alat Saji Tumpeng Tradisional', 'category': 'Properti Kuliner', 'price': '100000', 'deposit': '75000', 'stock': '4', 'condition': 'Sangat baik', 'location': 'Yogyakarta', 'description': 'Set alat saji tumpeng. Dikembalikan dalam keadaan bersih dan lengkap.', 'status': 'Tersedia'},
+    {'name': 'Paket Alat Membatik', 'category': 'Perlengkapan Workshop Kriya', 'price': '125000', 'deposit': '100000', 'stock': '8', 'condition': 'Baik', 'location': 'Pekalongan', 'description': 'Paket alat membatik untuk kegiatan workshop. Bahan habis pakai dihitung terpisah.', 'status': 'Tersedia'},
+    {'name': 'Andong Tradisional', 'category': 'Transportasi Tradisional', 'price': '500000', 'deposit': '500000', 'stock': '1', 'condition': 'Baik', 'location': 'Yogyakarta', 'description': 'Layanan andong dengan operator/pengemudi. Area layanan, kapasitas, dan jadwal wajib dikonfirmasi.', 'status': 'Tersedia'},
   ];
   final List<Map<String, String>> orders = [
-    {'customer': 'Sari Wulandari', 'product': 'Kebaya Jawa', 'date': '3–6 Okt 2026', 'total': '450000', 'status': 'Menunggu Konfirmasi'},
-    {'customer': 'Budi Santoso', 'product': 'Kain Tenun Bali', 'date': '8–10 Okt 2026', 'total': '300000', 'status': 'Dikonfirmasi'},
-    {'customer': 'Rina Kartika', 'product': 'Aksesori Tradisional', 'date': '12–14 Okt 2026', 'total': '225000', 'status': 'Sedang Disewa'},
+    {'customer': 'Sari Wulandari', 'product': 'Paket Busana Adat Bali', 'date': '3–6 Okt 2026', 'total': '450000', 'status': 'Menunggu Konfirmasi'},
+    {'customer': 'Budi Santoso', 'product': 'Gamelan Mini', 'date': '8–10 Okt 2026', 'total': '300000', 'status': 'Dikonfirmasi'},
+    {'customer': 'Rina Kartika', 'product': 'Paket Alat Membatik', 'date': '12–14 Okt 2026', 'total': '225000', 'status': 'Sedang Disewa'},
   ];
+
+  Future<void> editProduct(Map<String, String> product) async {
+    final name = TextEditingController(text: product['name'] ?? '');
+    final price = TextEditingController(text: _formatRibuan(product['price'] ?? ''));
+    final stock = TextEditingController(text: product['stock'] ?? '1');
+    final deposit = TextEditingController(text: _formatRibuan(product['deposit'] ?? '0'));
+    final location = TextEditingController(text: product['location'] ?? '');
+    final description = TextEditingController(text: product['description'] ?? '');
+    String category = product['category'] ?? 'Pakaian Adat';
+    String condition = product['condition'] ?? 'Sangat baik';
+    final result = await showDialog<Map<String, String>>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+        backgroundColor: gading,
+        title: const Text('Edit Produk', style: TextStyle(color: kayu, fontWeight: FontWeight.w900)),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama produk')),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(initialValue: category, decoration: const InputDecoration(labelText: 'Kategori'),
+            items: ragamNusaCategories.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: (v) => setDialogState(() => category = v ?? category)),
+          const SizedBox(height: 10),
+          TextField(controller: price, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Harga sewa per hari', prefixText: 'Rp ', helperText: 'Contoh: 20.000')),
+          const SizedBox(height: 10),
+          TextField(controller: stock, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stok tersedia')),
+          const SizedBox(height: 10),
+          TextField(controller: deposit, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Deposit', prefixText: 'Rp ')),
+          const SizedBox(height: 10),
+          TextField(controller: location, decoration: const InputDecoration(labelText: 'Lokasi produk / toko')),
+          const SizedBox(height: 10),
+          DropdownButtonFormField<String>(initialValue: condition, decoration: const InputDecoration(labelText: 'Kondisi barang'),
+            items: const ['Sangat baik', 'Baik', 'Cukup baik'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+            onChanged: (v) => setDialogState(() => condition = v ?? condition)),
+          const SizedBox(height: 10),
+          TextField(controller: description, maxLines: 3, decoration: const InputDecoration(labelText: 'Deskripsi')),
+        ])),
+        actions: [TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Batal')),
+          FilledButton(style: FilledButton.styleFrom(backgroundColor: kayu), onPressed: () {
+            final stockValue = int.tryParse(stock.text.trim());
+            if (name.text.trim().isEmpty || _parseNominal(price.text) <= 0 || stockValue == null || stockValue < 0) {
+              notice(dialogContext, 'Isi nama dan harga dengan benar. Stok harus 0 atau lebih.'); return;
+            }
+            Navigator.pop(dialogContext, {'name': name.text.trim(), 'category': category,
+              'price': _parseNominal(price.text).toString(), 'stock': stockValue.toString(),
+              'deposit': _parseNominal(deposit.text).toString(), 'condition': condition,
+              'location': location.text.trim(), 'description': description.text.trim(),
+              'status': stockValue == 0 ? 'Stok habis' : (product['status'] == 'Disembunyikan' ? 'Disembunyikan' : 'Tersedia')});
+          }, child: const Text('Simpan perubahan'))],
+      )),
+    );
+    if (result != null && mounted) { product
+      ..clear()
+      ..addAll(result); setState(() {}); }
+    name.dispose(); price.dispose(); stock.dispose(); deposit.dispose(); location.dispose(); description.dispose();
+  }
+
 
   void addProduct() async {
     final nameController = TextEditingController();
@@ -941,16 +1258,16 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             DropdownButtonFormField<String>(
               initialValue: category,
               decoration: const InputDecoration(labelText: 'Kategori'),
-              items: const ['Pakaian Adat', 'Kostum Tari', 'Kerajinan', 'Kain Tradisional', 'Alat Musik']
+              items: ragamNusaCategories
                 .map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
               onChanged: (v) => setDialogState(() => category = v ?? category),
             ),
             const SizedBox(height: 10),
-            TextField(controller: priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Harga sewa per hari (Rp)')),
+            TextField(controller: priceController, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Harga sewa per hari', prefixText: 'Rp ', hintText: '20.000', helperText: 'Contoh: 20.000 atau 1.500.000')),
             const SizedBox(height: 10),
             TextField(controller: stockController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stok')),
             const SizedBox(height: 10),
-            TextField(controller: depositController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Deposit (Rp)')),
+            TextField(controller: depositController, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Deposit (opsional)', prefixText: 'Rp ', hintText: '0', helperText: 'Boleh dikosongkan jika tanpa deposit')),
             const SizedBox(height: 10),
             TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Lokasi produk / toko')),
             const SizedBox(height: 10),
@@ -969,14 +1286,14 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: kayu),
               onPressed: () {
-                if (nameController.text.trim().isEmpty || (int.tryParse(priceController.text) ?? 0) <= 0 || (int.tryParse(stockController.text) ?? 0) <= 0) {
+                if (nameController.text.trim().isEmpty || _parseNominal(priceController.text) <= 0 || (int.tryParse(stockController.text) ?? 0) <= 0) {
                   notice(dialogContext, 'Isi nama, harga, dan stok dengan benar.');
                   return;
                 }
                 Navigator.pop(dialogContext, {
                   'name': nameController.text.trim(), 'category': category,
-                  'price': priceController.text.trim(), 'stock': stockController.text.trim(),
-                  'deposit': depositController.text.trim().isEmpty ? '0' : depositController.text.trim(),
+                  'price': _parseNominal(priceController.text).toString(), 'stock': stockController.text.trim(),
+                  'deposit': _parseNominal(depositController.text).toString(),
                   'condition': condition, 'location': locationController.text.trim(),
                   'description': descriptionController.text.trim(), 'status': 'Tersedia'
                 });
@@ -1002,10 +1319,10 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
         onOpenShopProfile: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerShopProfilePage(shopName: widget.shopName.isEmpty ? 'Toko Sari Budaya' : widget.shopName))),
         onOpenStats: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerPerformancePage())),
         onOpenVerification: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerVerificationPage()))),
-      OwnerProductsPage(products: products, onAdd: addProduct, onChanged: () => setState(() {})),
+      OwnerProductsPage(products: products, onAdd: addProduct, onEdit: editProduct, onChanged: () => setState(() {})),
       OwnerOrdersPage(orders: orders, onChanged: () => setState(() {})),
       const OwnerFinancePage(),
-      ProfilePage(name: widget.ownerName, role: 'Pemilik Toko'),
+      OwnerProfilePage(name: widget.ownerName, shopName: widget.shopName),
     ];
     return Scaffold(
       backgroundColor: gading,
@@ -1013,6 +1330,11 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
         backgroundColor: gading, foregroundColor: kayu, elevation: 0,
         title: const Text('RAGAMNUSA', style: TextStyle(color: kayu, fontWeight: FontWeight.w900, letterSpacing: 1)),
         actions: [
+          IconButton(
+            tooltip: 'Chat dengan penyewa',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatInboxPage(isOwner: true))),
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: kayu),
+          ),
           IconButton(
             tooltip: 'Notifikasi',
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationsPage())),
@@ -1053,8 +1375,13 @@ class OwnerDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final pending = orders.where((o) => o['status'] == 'Menunggu Konfirmasi').length;
+    final reviewCount = ragamNusaReviews.length;
+    final averageRating = reviewCount == 0
+        ? 0.0
+        : ragamNusaReviews.fold<int>(0, (sum, review) => sum + (review['rating'] as int)) / reviewCount;
+    final unansweredReviews = ragamNusaReviews.where((review) => (review['reply'] as String? ?? '').trim().isEmpty).length;
     return ListView(padding: const EdgeInsets.fromLTRB(18, 8, 18, 24), children: [
-      Text('Selamat datang, $name 👋', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
+      Text('Selamat datang, $name ', style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
       const SizedBox(height: 4),
       Text(shop.isEmpty ? 'Kelola toko budaya kamu di RAGAMNUSA.' : shop,
         style: TextStyle(color: teks.withValues(alpha: .7))),
@@ -1104,18 +1431,18 @@ class OwnerDashboard extends StatelessWidget {
             Container(
               width: 62, height: 62,
               decoration: BoxDecoration(color: const Color(0xFFF4E7D5), borderRadius: BorderRadius.circular(15)),
-              child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                Text('4.8', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: kayu)),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_rounded, size: 12, color: terracotta), Icon(Icons.star_half_rounded, size: 12, color: terracotta)]),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Text(averageRating.toStringAsFixed(1), style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: kayu)),
+                Row(mainAxisAlignment: MainAxisAlignment.center, children: List.generate(5, (index) => Icon(index < averageRating.round() ? Icons.star_rounded : Icons.star_outline_rounded, size: 12, color: terracotta))),
               ]),
             ),
             const SizedBox(width: 13),
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Ulasan dari penyewa', style: TextStyle(fontWeight: FontWeight.w900, color: teks)),
-              SizedBox(height: 4),
-              Text('Lihat komentar, penilaian, dan tanggapi ulasan pelanggan.', style: TextStyle(fontSize: 12, height: 1.35, color: Color(0xFF78695D))),
-              SizedBox(height: 6),
-              Text('126 ulasan · 8 belum dibalas', style: TextStyle(fontSize: 11, color: terracotta, fontWeight: FontWeight.w800)),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('Ulasan dari penyewa', style: TextStyle(fontWeight: FontWeight.w900, color: teks)),
+              const SizedBox(height: 4),
+              const Text('Lihat komentar, penilaian, dan tanggapi ulasan pelanggan.', style: TextStyle(fontSize: 12, height: 1.35, color: Color(0xFF78695D))),
+              const SizedBox(height: 6),
+              Text('$reviewCount ulasan · $unansweredReviews belum dibalas', style: const TextStyle(fontSize: 11, color: terracotta, fontWeight: FontWeight.w800)),
             ])),
             const Icon(Icons.chevron_right, color: terracotta),
           ]),
@@ -1275,7 +1602,7 @@ class _OwnerAvailabilityPageState extends State<OwnerAvailabilityPage> {
         const Text('Tandai tanggal ketika produk sedang digunakan atau tidak dapat disewakan.', style: TextStyle(color: Color(0xFF78695D), height: 1.4)),
         const SizedBox(height: 18),
         DropdownButtonFormField<String>(
-          value: selectedProduct,
+          initialValue: selectedProduct,
           decoration: const InputDecoration(labelText: 'Pilih produk', prefixIcon: Icon(Icons.inventory_2_outlined)),
           items: widget.products.map((p) => DropdownMenuItem(value: p['name'], child: Text(p['name'] ?? 'Produk'))).toList(),
           onChanged: (value) => setState(() => selectedProduct = value),
@@ -1319,10 +1646,256 @@ class _OwnerAvailabilityPageState extends State<OwnerAvailabilityPage> {
   }
 }
 
+class ChatInboxPage extends StatefulWidget {
+  final bool isOwner;
+  final String currentCustomer;
+  const ChatInboxPage({super.key, required this.isOwner, this.currentCustomer = 'Sahabat Nusantara'});
+  @override
+  State<ChatInboxPage> createState() => _ChatInboxPageState();
+}
+
+class _ChatInboxPageState extends State<ChatInboxPage> {
+  final searchController = TextEditingController();
+  String searchText = '';
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allThreads = widget.isOwner
+        ? ragamNusaChats
+        : ragamNusaChats.where((c) => c['customer'] == widget.currentCustomer || c['customer'] == 'Sahabat Nusantara').toList();
+    final threads = allThreads.where((thread) {
+      final person = widget.isOwner ? thread['customer'] as String : thread['owner'] as String;
+      final product = thread['product'] as String;
+      final lastMessages = thread['messages'] as List<Map<String, String>>;
+      final last = lastMessages.isEmpty ? '' : (lastMessages.last['text'] ?? '');
+      final query = searchText.toLowerCase();
+      return person.toLowerCase().contains(query) || product.toLowerCase().contains(query) || last.toLowerCase().contains(query);
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: gading,
+      appBar: AppBar(
+        backgroundColor: gading,
+        foregroundColor: kayu,
+        elevation: 0,
+        titleSpacing: 20,
+        title: const Text('Pesan', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800, color: teks)),
+        leading: IconButton(icon: const Icon(Icons.arrow_back_rounded), onPressed: () => Navigator.maybePop(context)),
+      ),
+      body: SafeArea(
+        top: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(18, 8, 18, 28),
+          children: [
+            Text(
+              widget.isOwner ? 'Percakapan penyewa' : 'Pesan kamu',
+              style: const TextStyle(fontSize: 25, height: 1.2, fontWeight: FontWeight.w900, color: teks),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              widget.isOwner
+                  ? 'Balas pertanyaan dan koordinasikan detail penyewaan.'
+                  : 'Tanyakan ketersediaan produk dan detail penyewaan kepada pemilik.',
+              style: const TextStyle(fontSize: 14, height: 1.45, color: Color(0xFF78695D)),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: searchController,
+              onChanged: (value) => setState(() => searchText = value),
+              style: const TextStyle(fontSize: 14, color: teks),
+              decoration: InputDecoration(
+                hintText: 'Cari nama atau produk...',
+                hintStyle: const TextStyle(fontSize: 14, color: Color(0xFF9A8D80)),
+                prefixIcon: const Icon(Icons.search_rounded, color: terracotta),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 13),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: kayu.withValues(alpha: .10))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: terracotta, width: 1.3)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (threads.isEmpty)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 30),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: kayu.withValues(alpha: .08))),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 62, height: 62,
+                      decoration: const BoxDecoration(color: Color(0xFFF2E7D8), shape: BoxShape.circle),
+                      child: const Icon(Icons.forum_outlined, size: 29, color: terracotta),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(searchText.isEmpty ? 'Belum ada percakapan' : 'Percakapan tidak ditemukan',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: teks)),
+                    const SizedBox(height: 6),
+                    Text(
+                      searchText.isNotEmpty
+                          ? 'Coba kata kunci nama atau produk lain.'
+                          : (widget.isOwner ? 'Pesan dari penyewa akan muncul di sini.' : 'Buka halaman produk, lalu pilih “Chat Pemilik” untuk memulai.'),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF78695D)),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ...threads.map((thread) {
+                final messages = thread['messages'] as List<Map<String, String>>;
+                final last = messages.isEmpty ? 'Mulai percakapan tentang produk ini' : (messages.last['text'] ?? '');
+                final person = widget.isOwner ? thread['customer'] as String : thread['owner'] as String;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: kayu.withValues(alpha: .10)),
+                    boxShadow: [BoxShadow(color: kayu.withValues(alpha: .035), blurRadius: 12, offset: const Offset(0, 4))],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(18),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(18),
+                      onTap: () async {
+                        await Navigator.push(context, MaterialPageRoute(builder: (_) => ChatConversationPage(thread: thread, isOwner: widget.isOwner)));
+                        if (mounted) setState(() {});
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 14),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48, height: 48,
+                              decoration: BoxDecoration(color: const Color(0xFFF0E4D4), borderRadius: BorderRadius.circular(16)),
+                              child: Icon(widget.isOwner ? Icons.person_outline_rounded : Icons.storefront_outlined, color: kayu, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(person, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: teks)),
+                                  const SizedBox(height: 3),
+                                  Text(thread['product'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: terracotta)),
+                                  const SizedBox(height: 6),
+                                  Text(last, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, color: Color(0xFF78695D))),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            const Icon(Icons.chevron_right_rounded, color: terracotta, size: 23),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFFEDE2D0).withValues(alpha: .72), borderRadius: BorderRadius.circular(13)),
+              child: const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 17, color: kayu),
+                  SizedBox(width: 8),
+                  Expanded(child: Text('Prototype: pesan masih tersimpan sementara di perangkat ini dan belum dikirim melalui internet.', style: TextStyle(fontSize: 11, height: 1.4, color: teks))),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ChatConversationPage extends StatefulWidget {
+  final Map<String, dynamic> thread;
+  final bool isOwner;
+  const ChatConversationPage({super.key, required this.thread, required this.isOwner});
+  @override
+  State<ChatConversationPage> createState() => _ChatConversationPageState();
+}
+
+class _ChatConversationPageState extends State<ChatConversationPage> {
+  final controller = TextEditingController();
+  final scrollController = ScrollController();
+  final inputFocusNode = FocusNode();
+  List<String> get quickReplies => widget.isOwner
+      ? const [
+          'Halo Kak, stok masih tersedia ya ',
+          'Boleh info tanggal sewanya?',
+          'Untuk ukuran/detail, saya bantu cek ya.',
+          'Silakan cek detail dan aturan sewanya ya.',
+          'Terima kasih sudah menghubungi toko ',
+        ]
+      : const [
+          'Halo Kak, stoknya masih ada?',
+          'Bisa sewa untuk tanggal tertentu?',
+          'Boleh tahu ukuran/kondisinya?',
+          'Bagaimana cara pengambilannya?',
+          'Terima kasih, Kak! ',
+        ];
+  @override
+  void dispose() { controller.dispose(); scrollController.dispose(); inputFocusNode.dispose(); super.dispose(); }
+  void send([String? preset]) {
+    final text = (preset ?? controller.text).trim(); if (text.isEmpty) return;
+    final messages = widget.thread['messages'] as List<Map<String, String>>;
+    messages.add({'sender': widget.isOwner ? 'owner' : 'renter', 'text': text,
+      'time': TimeOfDay.now().format(context)});
+    controller.clear();
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) scrollController.animateTo(scrollController.position.maxScrollExtent, duration: const Duration(milliseconds: 250), curve: Curves.easeOut);
+      if (mounted) inputFocusNode.requestFocus();
+    });
+  }
+  @override
+  Widget build(BuildContext context) {
+    final messages = widget.thread['messages'] as List<Map<String, String>>;
+    final person = widget.isOwner ? widget.thread['customer'] as String : widget.thread['owner'] as String;
+    return Scaffold(backgroundColor: gading, appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(person, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16, color: teks)), Text(widget.thread['product'] as String, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, color: terracotta))])),
+      body: Column(children: [Container(width: double.infinity, padding: const EdgeInsets.all(10), color: const Color(0xFFEDE2D0), child: const Text('Diskusikan ketersediaan, ukuran, pengiriman, dan detail sewa dengan sopan.', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: teks))),
+        Expanded(child: ListView.builder(controller: scrollController, padding: const EdgeInsets.all(14), itemCount: messages.length, itemBuilder: (context, index) {
+          final message = messages[index]; final mine = message['sender'] == (widget.isOwner ? 'owner' : 'renter');
+          return Align(alignment: mine ? Alignment.centerRight : Alignment.centerLeft, child: Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 10), constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * .78), decoration: BoxDecoration(color: mine ? kayu : Colors.white, borderRadius: BorderRadius.only(topLeft: const Radius.circular(16), topRight: const Radius.circular(16), bottomLeft: Radius.circular(mine ? 16 : 4), bottomRight: Radius.circular(mine ? 4 : 16))), child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [Align(alignment: Alignment.centerLeft, child: Text(message['text'] ?? '', style: TextStyle(color: mine ? Colors.white : teks, height: 1.35))), const SizedBox(height: 4), Text(message['time'] ?? '', style: TextStyle(color: mine ? Colors.white70 : Colors.black45, fontSize: 10))])));
+        })),
+        Container(
+          width: double.infinity,
+          color: gading,
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 2),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('Pesan cepat · tekan untuk kirim', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: kayu)),
+            const SizedBox(height: 7),
+            SizedBox(height: 38, child: ListView(scrollDirection: Axis.horizontal, children: quickReplies.map((reply) => Padding(padding: const EdgeInsets.only(right: 7), child: ActionChip(label: Text(reply, style: const TextStyle(fontSize: 11)), backgroundColor: Colors.white, side: BorderSide(color: kayu.withValues(alpha: .15)), onPressed: () => send(reply)))).toList())),
+          ]),
+        ),
+        SafeArea(top: false, child: Padding(padding: const EdgeInsets.fromLTRB(8, 5, 12, 10), child: Row(children: [
+          Expanded(child: TextField(focusNode: inputFocusNode, controller: controller, minLines: 1, maxLines: 4, textInputAction: TextInputAction.send, onSubmitted: (_) => send(), decoration: InputDecoration(hintText: 'Tulis pesan...', filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)))),
+          const SizedBox(width: 6),
+          IconButton.filled(onPressed: () => send(), style: IconButton.styleFrom(backgroundColor: kayu, foregroundColor: Colors.white), icon: const Icon(Icons.send_rounded)),
+        ]))),
+      ]));
+  }
+}
+
 class OwnerProductsPage extends StatelessWidget {
   final List<Map<String, String>> products;
   final VoidCallback onAdd, onChanged;
-  const OwnerProductsPage({super.key, required this.products, required this.onAdd, required this.onChanged});
+  final Future<void> Function(Map<String, String>) onEdit;
+  const OwnerProductsPage({super.key, required this.products, required this.onAdd, required this.onEdit, required this.onChanged});
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 90), children: [
     const Text('Produk Saya', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks)),
@@ -1346,7 +1919,7 @@ class OwnerProductsPage extends StatelessWidget {
           Text(p['category'] ?? '', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
           const SizedBox(height: 5),
           Text('${_rupiah(int.tryParse(p['price'] ?? '') ?? 0)}/hari', style: const TextStyle(fontWeight: FontWeight.bold, color: kayu)),
-          Text('Stok ${p['stock']} · ${p['status']}', style: const TextStyle(fontSize: 11, color: zaitun)),
+          Text('Stok ${p['stock']} · ${(int.tryParse(p['stock'] ?? '0') ?? 0) == 0 ? 'Stok habis' : (p['status'] ?? 'Tersedia')}', style: TextStyle(fontSize: 11, color: (int.tryParse(p['stock'] ?? '0') ?? 0) == 0 ? Colors.redAccent : zaitun)),
           if ((p['condition'] ?? '').isNotEmpty) Text('Kondisi: ${p['condition']}', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
           if ((p['deposit'] ?? '0') != '0') Text('Deposit ${_rupiah(int.tryParse(p['deposit'] ?? '') ?? 0)}', style: const TextStyle(fontSize: 11, color: terracotta)),
           if ((p['location'] ?? '').isNotEmpty) Text(p['location']!, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
@@ -1354,10 +1927,12 @@ class OwnerProductsPage extends StatelessWidget {
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: kayu),
           onSelected: (v) {
+            if (v == 'edit') { onEdit(p); }
             if (v == 'toggle') { p['status'] = p['status'] == 'Tersedia' ? 'Disembunyikan' : 'Tersedia'; onChanged(); }
             if (v == 'delete') { products.remove(p); onChanged(); }
           },
           itemBuilder: (_) => [
+            const PopupMenuItem(value: 'edit', child: Text('Edit nama, harga & stok')),
             PopupMenuItem(value: 'toggle', child: Text(p['status'] == 'Tersedia' ? 'Sembunyikan produk' : 'Tampilkan produk')),
             const PopupMenuItem(value: 'delete', child: Text('Hapus produk')),
           ],
@@ -1439,13 +2014,7 @@ class OwnerReviewsPage extends StatefulWidget {
 
 class _OwnerReviewsPageState extends State<OwnerReviewsPage> {
   String filter = 'Semua';
-  final List<Map<String, dynamic>> reviews = [
-    {'name': 'Sari Wulandari', 'product': 'Kebaya Jawa', 'date': '18 Okt 2026', 'rating': 5, 'comment': 'Kebayanya cantik dan bersih. Detail bordirnya bagus, pemilik juga ramah dan responsif.', 'reply': 'Terima kasih sudah menyewa di toko kami! Senang sekali kebayanya cocok untuk acara Anda.'},
-    {'name': 'Budi Santoso', 'product': 'Kain Tenun Bali', 'date': '16 Okt 2026', 'rating': 5, 'comment': 'Kain sesuai foto, proses sewa mudah dan pengiriman tepat waktu.', 'reply': ''},
-    {'name': 'Rina Kartika', 'product': 'Aksesori Tradisional', 'date': '14 Okt 2026', 'rating': 4, 'comment': 'Barang bagus dan terawat. Akan lebih baik kalau pilihan warna ditambah.', 'reply': ''},
-    {'name': 'Dewi Anggraini', 'product': 'Kebaya Jawa', 'date': '11 Okt 2026', 'rating': 5, 'comment': 'Sangat puas! Ukuran pas dan barang dikemas dengan rapi.', 'reply': 'Terima kasih atas ulasannya, Kak Dewi. Kami tunggu pesanan berikutnya!'},
-    {'name': 'Andi Pratama', 'product': 'Kain Tenun Bali', 'date': '8 Okt 2026', 'rating': 3, 'comment': 'Motifnya bagus, tetapi warna sedikit berbeda dari foto.', 'reply': ''},
-  ];
+  final List<Map<String, dynamic>> reviews = ragamNusaReviews;
 
   Future<void> _replyTo(Map<String, dynamic> review) async {
     final controller = TextEditingController(text: review['reply'] as String? ?? '');
@@ -1477,6 +2046,9 @@ class _OwnerReviewsPageState extends State<OwnerReviewsPage> {
   @override
   Widget build(BuildContext context) {
     final filtered = reviews.where((r) => filter == 'Semua' || '${r['rating']} bintang' == filter).toList();
+    final totalReviews = reviews.length;
+    final average = totalReviews == 0 ? 0.0 : reviews.fold<int>(0, (sum, r) => sum + (r['rating'] as int)) / totalReviews;
+    final unanswered = reviews.where((r) => (r['reply'] as String? ?? '').trim().isEmpty).length;
     return Scaffold(
       backgroundColor: gading,
       appBar: AppBar(backgroundColor: gading, foregroundColor: kayu, elevation: 0, title: const Text('Rating & Ulasan', style: TextStyle(fontWeight: FontWeight.w900))),
@@ -1488,26 +2060,22 @@ class _OwnerReviewsPageState extends State<OwnerReviewsPage> {
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('Reputasi toko', style: TextStyle(color: gading, fontSize: 13)),
               const SizedBox(height: 5),
-              const Row(crossAxisAlignment: CrossAxisAlignment.end, children: [Text('4.8', style: TextStyle(color: gading, fontSize: 42, height: 1, fontWeight: FontWeight.w900)), SizedBox(width: 7), Padding(padding: EdgeInsets.only(bottom: 5), child: Text('/ 5.0', style: TextStyle(color: Color(0xFFF1E5D6))))]),
+              Row(crossAxisAlignment: CrossAxisAlignment.end, children: [Text(average.toStringAsFixed(1), style: const TextStyle(color: gading, fontSize: 42, height: 1, fontWeight: FontWeight.w900)), const SizedBox(width: 7), const Padding(padding: EdgeInsets.only(bottom: 5), child: Text('/ 5.0', style: TextStyle(color: Color(0xFFF1E5D6))))]),
               const SizedBox(height: 7),
-              const Row(children: [Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_rounded, color: Color(0xFFFFD27A), size: 18), Icon(Icons.star_half_rounded, color: Color(0xFFFFD27A), size: 18)]),
+              Row(children: List.generate(5, (index) => Icon(index < average.round() ? Icons.star_rounded : Icons.star_outline_rounded, color: const Color(0xFFFFD27A), size: 18))),
               const SizedBox(height: 5),
-              const Text('Berdasarkan 126 ulasan · contoh demo', style: TextStyle(color: Color(0xFFF1E5D6), fontSize: 11)),
+              Text('Berdasarkan $totalReviews ulasan · $unanswered belum dibalas', style: const TextStyle(color: Color(0xFFF1E5D6), fontSize: 11)),
             ])),
             const Icon(Icons.reviews_outlined, color: Color(0x44F8F3E9), size: 82),
           ]),
         ),
         const SizedBox(height: 18),
         _surface(Column(children: [
-          _ratingBar(5, 92, '73%'),
-          const SizedBox(height: 10),
-          _ratingBar(4, 24, '19%'),
-          const SizedBox(height: 10),
-          _ratingBar(3, 7, '6%'),
-          const SizedBox(height: 10),
-          _ratingBar(2, 2, '1.5%'),
-          const SizedBox(height: 10),
-          _ratingBar(1, 1, '0.5%'),
+          for (int stars = 5; stars >= 1; stars--) ...[
+            if (stars != 5) const SizedBox(height: 10),
+            _ratingBar(stars, reviews.where((review) => review['rating'] == stars).length,
+              totalReviews == 0 ? '0%' : '${(reviews.where((review) => review['rating'] == stars).length * 100 / totalReviews).round()}%'),
+          ],
         ])),
         const SizedBox(height: 22),
         const Text('Komentar penyewa', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900, color: teks)),
@@ -1520,14 +2088,14 @@ class _OwnerReviewsPageState extends State<OwnerReviewsPage> {
         ...filtered.map((review) => _ReviewCard(review: review, onReply: () => _replyTo(review))),
         if (filtered.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Text('Belum ada ulasan pada kategori ini.', textAlign: TextAlign.center)),
         const SizedBox(height: 8),
-        const Text('Rating dan komentar pada halaman ini adalah data contoh. Nantinya data dapat diambil dari ulasan penyewa setelah transaksi selesai.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF78695D))),
+        const Text('Ulasan awal adalah data contoh. Ulasan yang dikirim dari akun penyewa pada prototype ini akan tampil di sini selama aplikasi berjalan.', style: TextStyle(fontSize: 11, height: 1.4, color: Color(0xFF78695D))),
       ]),
     );
   }
 
   Widget _ratingBar(int stars, int count, String percent) => Row(children: [
     SizedBox(width: 54, child: Row(children: [Text('$stars', style: const TextStyle(fontWeight: FontWeight.w800)), const Icon(Icons.star_rounded, color: terracotta, size: 16)])),
-    Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: count / 126, minHeight: 8, backgroundColor: const Color(0xFFEDE2D0), color: terracotta))),
+    Expanded(child: ClipRRect(borderRadius: BorderRadius.circular(8), child: LinearProgressIndicator(value: reviews.isEmpty ? 0 : count / reviews.length, minHeight: 8, backgroundColor: const Color(0xFFEDE2D0), color: terracotta))),
     const SizedBox(width: 10), SizedBox(width: 44, child: Text(percent, textAlign: TextAlign.end, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D)))),
   ]);
 }
@@ -1577,10 +2145,10 @@ class OwnerShopProfilePage extends StatefulWidget {
 }
 
 class _OwnerShopProfilePageState extends State<OwnerShopProfilePage> {
-  late final TextEditingController nameController = TextEditingController(text: widget.shopName);
-  final addressController = TextEditingController(text: 'Yogyakarta, Indonesia');
-  final hoursController = TextEditingController(text: 'Senin–Sabtu, 09.00–17.00');
-  final descriptionController = TextEditingController(text: 'Menyewakan busana dan perlengkapan budaya Indonesia yang terawat untuk acara adat, wisuda, dan kegiatan budaya.');
+  late final TextEditingController nameController = TextEditingController(text: ownerProfileData['store'] == 'Toko Sari Budaya' ? widget.shopName : ownerProfileData['store']);
+  final addressController = TextEditingController(text: ownerProfileData['address']);
+  final hoursController = TextEditingController(text: ownerProfileData['hours']);
+  final descriptionController = TextEditingController(text: ownerProfileData['description']);
   @override
   void dispose() { nameController.dispose(); addressController.dispose(); hoursController.dispose(); descriptionController.dispose(); super.dispose(); }
   @override
@@ -1595,7 +2163,7 @@ class _OwnerShopProfilePageState extends State<OwnerShopProfilePage> {
         const SizedBox(height: 9),
         Text(nameController.text, textAlign: TextAlign.center, style: const TextStyle(fontSize: 20, color: kayu, fontWeight: FontWeight.w900)),
         const SizedBox(height: 4),
-        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.star_rounded, color: terracotta, size: 18), Text(' 4.8  ·  126 ulasan demo', style: TextStyle(color: Color(0xFF78695D), fontSize: 12))]),
+        const Row(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.star_rounded, color: terracotta, size: 18), Text(' Rating demo · ulasan contoh', style: TextStyle(color: Color(0xFF78695D), fontSize: 12))]),
       ])),
       const SizedBox(height: 18),
       const Text('Informasi toko', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
@@ -1608,7 +2176,7 @@ class _OwnerShopProfilePageState extends State<OwnerShopProfilePage> {
       const SizedBox(height: 10),
       TextField(controller: descriptionController, maxLines: 4, decoration: const InputDecoration(labelText: 'Deskripsi toko', alignLabelWithHint: true)),
       const SizedBox(height: 16),
-      PrimaryButton('Simpan perubahan', () { setState(() {}); notice(context, 'Perubahan ditampilkan di prototype. Data belum tersimpan permanen.'); }),
+      PrimaryButton('Simpan perubahan', () { if (nameController.text.trim().isEmpty || addressController.text.trim().isEmpty) { notice(context, 'Nama dan alamat toko wajib diisi.'); return; } ownerProfileData['store'] = nameController.text.trim(); ownerProfileData['address'] = addressController.text.trim(); ownerProfileData['hours'] = hoursController.text.trim(); ownerProfileData['description'] = descriptionController.text.trim(); setState(() {}); notice(context, 'Profil toko diperbarui untuk sesi ini.'); }),
       const SizedBox(height: 8),
       const Text('Foto sampul dan logo dapat ditambahkan saat integrasi pemilih gambar.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
     ]),
@@ -1642,9 +2210,9 @@ class OwnerPerformancePage extends StatelessWidget {
       const Text('Produk populer', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
       const SizedBox(height: 10),
       _surface(Column(children: [
-        _popularProduct('Kebaya Jawa', '18 kali disewa', .86), const Divider(height: 22),
-        _popularProduct('Kain Tenun Bali', '12 kali disewa', .62), const Divider(height: 22),
-        _popularProduct('Aksesori Tradisional', '8 kali disewa', .42),
+        _popularProduct('Paket Busana Adat Bali', '18 kali disewa', .86), const Divider(height: 22),
+        _popularProduct('Gamelan Mini', '12 kali disewa', .62), const Divider(height: 22),
+        _popularProduct('Paket Alat Membatik', '8 kali disewa', .42),
       ])),
       const SizedBox(height: 12),
       const Text('Seluruh angka dan grafik merupakan data simulasi, bukan laporan transaksi nyata.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
@@ -1678,83 +2246,443 @@ class OwnerVerificationPage extends StatelessWidget {
   Widget _verificationRow(IconData icon, String title, String status, bool done) => ListTile(leading: CircleAvatar(backgroundColor: const Color(0xFFEDE2D0), child: Icon(icon, color: kayu)), title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800, color: teks)), subtitle: Text(status, style: const TextStyle(fontSize: 12, color: Color(0xFF78695D))), trailing: Icon(done ? Icons.check_circle : Icons.hourglass_empty_rounded, color: done ? zaitun : terracotta));
 }
 
-class OwnerFinancePage extends StatelessWidget {
+class _FinanceTransaction {
+  final String name, detail, method, time, status;
+  final int amount;
+  final bool incoming;
+  final IconData icon;
+  const _FinanceTransaction({required this.name, required this.detail, required this.method, required this.time, required this.status, required this.amount, required this.incoming, required this.icon});
+}
+
+class OwnerFinancePage extends StatefulWidget {
   const OwnerFinancePage({super.key});
   @override
-  Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 24), children: [
-    const Text('Keuangan', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks)),
-    const SizedBox(height: 5),
-    const Text('Pantau pendapatan dan riwayat transaksi toko.', style: TextStyle(color: Color(0xFF78695D))),
-    const SizedBox(height: 18),
-    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(
-      gradient: const LinearGradient(colors: [Color(0xFF4E2F21), Color(0xFFA66A43)]), borderRadius: BorderRadius.circular(20)),
-      child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Saldo tersedia · DEMO', style: TextStyle(color: gading)),
-        SizedBox(height: 8),
-        Text('Rp4.750.000', style: TextStyle(color: gading, fontSize: 28, fontWeight: FontWeight.w900)),
-        SizedBox(height: 5),
-        Text('Angka simulasi, belum terhubung ke pembayaran nyata.', style: TextStyle(color: Color(0xFFF1E5D6), fontSize: 11)),
+  State<OwnerFinancePage> createState() => _OwnerFinancePageState();
+}
+
+class _OwnerFinancePageState extends State<OwnerFinancePage> {
+  int period = 1; // 0 harian, 1 mingguan, 2 bulanan
+  int transactionFilter = 0;
+  final List<_FinanceTransaction> transactions = const [
+    _FinanceTransaction(name: 'Arwin Pratama', detail: 'Sewa Kebaya Kutu Baru · RN-1028', method: 'Transfer BCA', time: 'Hari ini, 14.20', status: 'Diterima langsung', amount: 150000, incoming: true, icon: Icons.account_balance_outlined),
+    _FinanceTransaction(name: 'Nadia Putri', detail: 'Sewa Gamelan Mini · RN-1027', method: 'GoPay', time: 'Hari ini, 11.05', status: 'Diterima langsung', amount: 100000, incoming: true, icon: Icons.account_balance_wallet_outlined),
+    _FinanceTransaction(name: 'Dimas Saputra', detail: 'Sewa Gebyok Pelaminan · RN-1026', method: 'QRIS', time: 'Kemarin, 19.42', status: 'Diterima langsung', amount: 250000, incoming: true, icon: Icons.qr_code_2_rounded),
+    _FinanceTransaction(name: 'Ayu Lestari', detail: 'Sewa Aksesori Adat · RN-1025', method: 'DANA', time: 'Kemarin, 15.10', status: 'Diterima langsung', amount: 50000, incoming: true, icon: Icons.account_balance_wallet_outlined),
+    _FinanceTransaction(name: 'Rizky Maulana', detail: 'Sewa Ulos Batak · RN-1024', method: 'Tunai saat serah terima', time: '21 Okt 2026, 10.00', status: 'Tandai setelah diterima', amount: 90000, incoming: true, icon: Icons.payments_outlined),
+    _FinanceTransaction(name: 'Pengembalian deposit', detail: 'Deposit pesanan RN-1018', method: 'Transfer bank', time: '20 Okt 2026, 16.30', status: 'Dana keluar', amount: 100000, incoming: false, icon: Icons.reply_rounded),
+  ];
+  final List<double> daily = const [180000, 240000, 90000, 350000, 200000, 420000, 300000];
+  final List<double> weekly = const [950000, 1200000, 850000, 1450000, 1100000, 1750000, 1300000];
+  final List<double> monthly = const [3200000, 4100000, 3800000, 5200000, 4600000, 6100000, 5700000, 7200000, 6500000, 8100000, 7600000, 9200000];
+  String money(int n) => _rupiah(n);
+  @override
+  Widget build(BuildContext context) {
+    final values = period == 0 ? daily : period == 1 ? weekly : monthly;
+    final labels = period == 0 ? const ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] : period == 1 ? const ['M-6', 'M-5', 'M-4', 'M-3', 'M-2', 'M-1', 'Kini'] : const ['Nov', 'Des', 'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt'];
+    final total = values.fold<double>(0, (a, b) => a + b).round();
+    final filtered = transactions.where((t) => transactionFilter == 0 || (transactionFilter == 1 && t.incoming) || (transactionFilter == 2 && !t.incoming)).toList();
+    return ListView(padding: const EdgeInsets.fromLTRB(18, 10, 18, 28), children: [
+      Row(children: [const Expanded(child: Text('Keuangan Toko', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: teks))), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7), decoration: BoxDecoration(color: const Color(0xFFE5EAD9), borderRadius: BorderRadius.circular(20)), child: const Row(children: [Icon(Icons.circle, size: 7, color: zaitun), SizedBox(width: 5), Text('Mode demo', style: TextStyle(fontSize: 11, color: zaitun, fontWeight: FontWeight.w800))]))]),
+      const SizedBox(height: 4), const Text('Ringkasan pemasukan, kanal pembayaran, dan transaksi toko.', style: TextStyle(color: Color(0xFF78695D))),
+      const SizedBox(height: 17),
+      Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF4E2F21), Color(0xFF805035), Color(0xFFA66A43)]), borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Row(children: [Icon(Icons.savings_outlined, color: Color(0xFFF1D9AE)), SizedBox(width: 8), Text('Total penerimaan sewa · simulasi', style: TextStyle(color: gading, fontSize: 12))]),
+        const SizedBox(height: 10), const Text('Rp18.450.000', style: TextStyle(color: Colors.white, fontSize: 29, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 5), const Text('Akumulasi contoh. Bukan saldo rekening dan belum berasal dari transaksi nyata.', style: TextStyle(color: Color(0xFFF1E5D6), fontSize: 11, height: 1.4)),
+        const SizedBox(height: 17), Row(children: [Expanded(child: _financeMiniMetric('Transaksi masuk', '38 transaksi')), const SizedBox(width: 12), Expanded(child: _financeMiniMetric('Deposit ditahan', 'Rp650.000'))]),
+      ])),
+      const SizedBox(height: 18),
+      const Text('Analitik pendapatan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 9),
+      Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: kayu.withValues(alpha: .10))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SegmentedButton<int>(segments: const [ButtonSegment(value: 0, label: Text('Harian')), ButtonSegment(value: 1, label: Text('Mingguan')), ButtonSegment(value: 2, label: Text('Bulanan'))], selected: {period}, onSelectionChanged: (v) => setState(() => period = v.first), style: SegmentedButton.styleFrom(selectedBackgroundColor: const Color(0xFFE7DCCB), selectedForegroundColor: kayu, visualDensity: VisualDensity.compact)),
+        const SizedBox(height: 14), Text(money(total), style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: kayu)),
+        Text(period == 0 ? 'Total simulasi 7 hari' : period == 1 ? 'Total simulasi 7 minggu' : 'Total simulasi 12 bulan', style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+        const SizedBox(height: 10), SizedBox(height: 175, child: CustomPaint(size: const Size(double.infinity, 175), painter: _FinanceChartPainter(values: values, labels: labels))),
+        const SizedBox(height: 6), const Text('Grafik memakai data contoh agar tampilan dapat diuji. Nantinya nilai harus dihitung dari pembayaran yang terverifikasi.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D), height: 1.4)),
+      ])),
+      const SizedBox(height: 18), const Text('Pembayaran diterima melalui', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 10), GridView.count(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 2.3, children: const [
+        _FinanceChannel(icon: Icons.qr_code_2_rounded, title: 'QRIS', subtitle: 'Rp4.250.000'), _FinanceChannel(icon: Icons.account_balance_outlined, title: 'Transfer bank', subtitle: 'Rp7.800.000'), _FinanceChannel(icon: Icons.account_balance_wallet_outlined, title: 'GoPay / DANA', subtitle: 'Rp3.100.000'), _FinanceChannel(icon: Icons.payments_outlined, title: 'Tunai / COD', subtitle: 'Rp1.200.000'),
       ]),
-    ),
-    const SizedBox(height: 14),
-    Row(children: [
-      const Expanded(child: _OwnerMetric(icon: Icons.trending_up, label: 'Pendapatan bulan ini', value: 'Rp12 jt')),
-      const SizedBox(width: 10),
-      const Expanded(child: _OwnerMetric(icon: Icons.hourglass_bottom, label: 'Menunggu pencairan', value: 'Rp2,1 jt')),
-    ]),
-    const SizedBox(height: 20),
-    const Text('Riwayat transaksi', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks)),
-    const SizedBox(height: 8),
-    _surface(Column(children: [
-      _summaryRow('Pembayaran sewa · Sari Wulandari', '+Rp450.000'),
-      const Divider(),
-      _summaryRow('Pencairan dana · Bank demo', '-Rp1.000.000'),
-      const Divider(),
-      _summaryRow('Pembayaran sewa · Budi Santoso', '+Rp300.000'),
-      const Divider(),
-      _summaryRow('Biaya layanan platform', '-Rp25.000'),
-    ])),
-    const SizedBox(height: 14),
-    PrimaryButton('Ajukan Pencairan', () => notice(context, 'Fitur pencairan perlu integrasi rekening dan backend.')),
+      const SizedBox(height: 18),
+      Row(children: [const Expanded(child: Text('Riwayat transaksi', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w900, color: teks))), Icon(Icons.receipt_long_outlined, color: terracotta)]),
+      const SizedBox(height: 9),
+      Wrap(spacing: 7, children: [ChoiceChip(label: const Text('Semua'), selected: transactionFilter == 0, onSelected: (_) => setState(() => transactionFilter = 0)), ChoiceChip(label: const Text('Uang masuk'), selected: transactionFilter == 1, onSelected: (_) => setState(() => transactionFilter = 1)), ChoiceChip(label: const Text('Uang keluar'), selected: transactionFilter == 2, onSelected: (_) => setState(() => transactionFilter = 2))]),
+      const SizedBox(height: 8),
+      ...filtered.map((t) => Container(margin: const EdgeInsets.only(bottom: 9), padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: Row(children: [CircleAvatar(backgroundColor: t.incoming ? const Color(0xFFE5EAD9) : const Color(0xFFF4E0D5), child: Icon(t.icon, color: t.incoming ? zaitun : terracotta)), const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(t.name, style: const TextStyle(fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 3), Text(t.detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Color(0xFF78695D))), Text('${t.method} · ${t.time}', style: const TextStyle(fontSize: 10, color: Color(0xFF78695D))), Text(t.status, style: TextStyle(fontSize: 10, color: t.incoming ? zaitun : terracotta, fontWeight: FontWeight.w700))])), const SizedBox(width: 6), Text('${t.incoming ? '+' : '-'}${money(t.amount)}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: t.incoming ? zaitun : terracotta))]))),
+      const SizedBox(height: 6),
+      Container(padding: const EdgeInsets.all(13), decoration: BoxDecoration(color: const Color(0xFFEDE2D0), borderRadius: BorderRadius.circular(14)), child: const Text('Penting: transaksi QRIS, bank, GoPay, DANA, dan tunai di sini hanyalah simulasi. Pembayaran langsung ke pemilik tidak dicairkan oleh RAGAMNUSA. Tandai transaksi hanya setelah dana benar-benar diterima. Deposit yang dapat dikembalikan dan ongkir harus dicatat terpisah dari pendapatan sewa.', style: TextStyle(fontSize: 11, height: 1.5, color: teks))),
+    ]);
+  }
+}
+
+Widget _financeMiniMetric(String label, String value) => Container(padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: Colors.white.withValues(alpha: .10), borderRadius: BorderRadius.circular(13)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(label, style: const TextStyle(color: Color(0xFFF1E5D6), fontSize: 10)), const SizedBox(height: 4), Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 14))]));
+
+class _FinanceChannel extends StatelessWidget {
+  final IconData icon; final String title, subtitle;
+  const _FinanceChannel({required this.icon, required this.title, required this.subtitle});
+  @override
+  Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(11), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15), border: Border.all(color: kayu.withValues(alpha: .10))), child: Row(children: [Icon(icon, color: terracotta, size: 24), const SizedBox(width: 8), Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: teks)), Text(subtitle, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w900, color: kayu))]))]));
+}
+
+class _FinanceChartPainter extends CustomPainter {
+  final List<double> values; final List<String> labels;
+  _FinanceChartPainter({required this.values, required this.labels});
+  @override
+  void paint(Canvas canvas, Size size) {
+    const left = 8.0, right = 8.0, top = 12.0, bottom = 27.0;
+    final chart = Rect.fromLTRB(left, top, size.width-right, size.height-bottom);
+    final maxValue = values.reduce((a,b) => a > b ? a : b) * 1.15;
+    final gridPaint = Paint()..color = const Color(0xFFE9DFD3)..strokeWidth = 1;
+    for (int i=0; i<4; i++) { final y=chart.top + chart.height*i/3; canvas.drawLine(Offset(chart.left,y), Offset(chart.right,y), gridPaint); }
+    final points = <Offset>[];
+    for (int i=0; i<values.length; i++) { final x = values.length == 1 ? chart.center.dx : chart.left + chart.width*i/(values.length-1); final y = chart.bottom - (values[i]/maxValue)*chart.height; points.add(Offset(x,y)); }
+    final path = Path();
+    for (int i = 0; i < points.length; i++) {
+      if (i == 0) {
+        path.moveTo(points[i].dx, points[i].dy);
+      } else {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+    }
+    final fill = Path.from(path)..lineTo(points.last.dx,chart.bottom)..lineTo(points.first.dx,chart.bottom)..close();
+    canvas.drawPath(fill, Paint()..shader=const LinearGradient(colors:[Color(0x55A66A43),Color(0x05A66A43)],begin:Alignment.topCenter,end:Alignment.bottomCenter).createShader(chart));
+    canvas.drawPath(path, Paint()..color=terracotta..strokeWidth=2.8..style=PaintingStyle.stroke..strokeCap=StrokeCap.round..strokeJoin=StrokeJoin.round);
+    for (int i = 0; i < points.length; i++) {
+      canvas.drawCircle(points[i], 3.5, Paint()..color = kayu);
+      final painter = TextPainter(
+        text: TextSpan(
+          text: labels[i],
+          style: const TextStyle(
+            fontSize: 9,
+            color: Color(0xFF78695D),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+        textAlign: TextAlign.center,
+      )..layout(maxWidth: 54);
+      final labelX = (points[i].dx - painter.width / 2)
+          .clamp(0.0, size.width - painter.width)
+          .toDouble();
+      painter.paint(canvas, Offset(labelX, chart.bottom + 7));
+    }
+  }
+  @override
+  bool shouldRepaint(covariant _FinanceChartPainter oldDelegate) => oldDelegate.values != values || oldDelegate.labels != labels;
+}
+
+class RenterProfilePage extends StatelessWidget {
+  final String name;
+  const RenterProfilePage({super.key, required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    final storedName = renterProfileData['name'] ?? '';
+    final displayName = storedName != 'Sahabat Nusantara' && storedName.trim().isNotEmpty
+        ? storedName : (name.trim().isEmpty ? 'Sahabat Nusantara' : name);
+    final hasAddress = (renterProfileData['address'] ?? '').trim().isNotEmpty;
+    final hasContact = (renterProfileData['phone'] ?? '').trim().isNotEmpty &&
+        (renterProfileData['email'] ?? '').trim().isNotEmpty;
+    final hasCustomName = displayName != 'Sahabat Nusantara';
+    final completed = [hasContact, hasAddress, hasCustomName].where((v) => v).length;
+    final completion = completed / 3;
+
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+      // HERO PENYEWA: hangat, personal, dan bernuansa Nusantara.
+      Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(30),
+          gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight,
+            colors: [Color(0xFF4E3022), Color(0xFF875337), Color(0xFFC88C62)]),
+          boxShadow: [BoxShadow(color: const Color(0xFF6B422D).withValues(alpha: .20), blurRadius: 24, offset: const Offset(0, 12))],
+        ),
+        child: Stack(children: [
+          const Positioned(right: -26, top: -42, child: Icon(Icons.spa_rounded, size: 190, color: Color(0x18FFFFFF))),
+          const Positioned(right: 35, bottom: -54, child: Icon(Icons.blur_on_rounded, size: 140, color: Color(0x16FFFFFF))),
+          Positioned(left: -25, bottom: -60, child: Container(width: 150, height: 150, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x20FFFFFF), width: 18)))),
+          Padding(padding: const EdgeInsets.all(21), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Container(width: 76, height: 76, decoration: BoxDecoration(color: const Color(0xFFFFEBDD), borderRadius: BorderRadius.circular(26), border: Border.all(color: const Color(0x66FFFFFF), width: 2), boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))]), child: const Icon(Icons.person_rounded, color: Color(0xFF6B422D), size: 46)),
+              const SizedBox(width: 14), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0x2EFFFFFF), borderRadius: BorderRadius.circular(30), border: Border.all(color: const Color(0x30FFFFFF))), child: const Text('RUANG PRIBADI', style: TextStyle(color: Color(0xFFFFEBDD), fontSize: 9, letterSpacing: 1.6, fontWeight: FontWeight.w900))),
+                const SizedBox(height: 9), Text(displayName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 23, height: 1.05, fontWeight: FontWeight.w900)),
+                const SizedBox(height: 7), const Row(children: [Icon(Icons.explore_rounded, size: 15, color: Color(0xFFFFD9B7)), SizedBox(width: 5), Expanded(child: Text('Penjelajah warisan Nusantara', style: TextStyle(color: Color(0xFFFFEBDD), fontSize: 11.5)))])
+              ])),
+            ]),
+            const SizedBox(height: 22),
+            Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0x20FFFFFF), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0x24FFFFFF))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(children: [const Expanded(child: Text('Buat pengalaman sewa lebih mudah', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12))), Text('${(completion * 100).round()}%', style: const TextStyle(color: Color(0xFFFFE0BE), fontWeight: FontWeight.w900, fontSize: 14))]),
+              const SizedBox(height: 10), ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: completion, minHeight: 7, backgroundColor: const Color(0x40FFFFFF), valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD3A7)))),
+              const SizedBox(height: 9), Text(completion == 1 ? 'Mantap! Informasi dasar profilmu sudah lengkap.' : 'Lengkapi data, kontak, dan alamat agar koordinasi sewa lebih lancar.', style: const TextStyle(color: Color(0xFFF8E9DB), fontSize: 11, height: 1.4)),
+            ])),
+          ])),
+        ]),
+      ),
+      const SizedBox(height: 25),
+      const _ProfileSectionHeading(icon: Icons.bolt_rounded, title: 'Akses cepat', subtitle: 'Atur hal penting dalam beberapa sentuhan'),
+      const SizedBox(height: 12),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: _ProfileActionCard(icon: Icons.badge_rounded, title: 'Data diri', subtitle: 'Nama & kontak', color: const Color(0xFF9B6545), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RenterPersonalDataPage(initialName: displayName))))),
+        const SizedBox(width: 10),
+        Expanded(child: _ProfileActionCard(icon: Icons.location_on_rounded, title: 'Alamat', subtitle: hasAddress ? 'Sudah diisi' : 'Tambahkan', color: const Color(0xFF78805B), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RenterAddressPage())))),
+        const SizedBox(width: 10),
+        Expanded(child: _ProfileActionCard(icon: Icons.tune_rounded, title: 'Preferensi', subtitle: 'Atur sewa', color: const Color(0xFFB47B52), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RentalPreferencesPage())))),
+      ]),
+      const SizedBox(height: 24),
+      Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: const Color(0xFFFFFBF5), borderRadius: BorderRadius.circular(25), border: Border.all(color: const Color(0xFFE8D9C9)), boxShadow: const [BoxShadow(color: Color(0x08000000), blurRadius: 14, offset: Offset(0, 5))]), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [Container(width: 44, height: 44, decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFFF1E0D0), Color(0xFFE8CBB1)]), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.local_shipping_rounded, color: Color(0xFF805237))), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Siap untuk sewa berikutnya?', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: teks)), SizedBox(height: 4), Text('Cek dua hal ini sebelum melakukan pemesanan.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D)))]))]),
+        const SizedBox(height: 15),
+        _ProfileChecklistRow(done: hasContact, title: hasContact ? 'Kontak akun sudah lengkap' : 'Lengkapi nomor telepon dan email', action: hasContact ? null : 'Lengkapi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RenterPersonalDataPage(initialName: displayName)))),
+        const SizedBox(height: 8),
+        _ProfileChecklistRow(done: hasAddress, title: hasAddress ? 'Alamat pengantaran sudah siap' : 'Tambahkan alamat pengantaran', action: hasAddress ? null : 'Tambah', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RenterAddressPage()))),
+      ])),
+      const SizedBox(height: 25),
+      const _ProfileSectionHeading(icon: Icons.shield_moon_rounded, title: 'Bantuan & perlindungan', subtitle: 'Jaga pengalaman sewa tetap nyaman'),
+      const SizedBox(height: 12),
+      _ProfileMenuTile(icon: Icons.notifications_active_outlined, title: 'Pengaturan aplikasi', subtitle: 'Notifikasi dan privasi akun', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),
+      _ProfileMenuTile(icon: Icons.support_agent_rounded, title: 'Pusat bantuan', subtitle: 'Pertanyaan dan laporan kendala sewa', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpDisputePage()))),
+      Container(margin: const EdgeInsets.only(top: 8), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: const Color(0xFFECE8D9), borderRadius: BorderRadius.circular(21)), child: const Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(Icons.verified_user_rounded, color: Color(0xFF66704D), size: 25), SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Sewa dengan tenang', style: TextStyle(fontWeight: FontWeight.w900, color: teks)), SizedBox(height: 5), Text('Simpan bukti komunikasi dan pembayaran. Periksa kondisi barang saat diterima maupun dikembalikan.', style: TextStyle(fontSize: 12, height: 1.45, color: Color(0xFF686A55)))]))])),
+      const SizedBox(height: 18),
+      OutlinedButton.icon(onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false), icon: const Icon(Icons.logout_rounded), label: const Text('Keluar dari akun'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF805237), side: const BorderSide(color: Color(0xFFD8C4B1)), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)))),
+      const SizedBox(height: 14), const Center(child: Text('RAGAMNUSA  •  Merawat cerita Nusantara', style: TextStyle(fontSize: 10, letterSpacing: .3, color: Color(0xFF9A8A7C)))),
+    ]);
+  }
+}
+
+class OwnerProfilePage extends StatelessWidget {
+  final String name;
+  final String shopName;
+  const OwnerProfilePage({super.key, required this.name, required this.shopName});
+
+  @override
+  Widget build(BuildContext context) {
+    final storedName = ownerProfileData['name'] ?? '';
+    final displayName = storedName != 'Pemilik Budaya' && storedName.trim().isNotEmpty ? storedName : (name.trim().isEmpty ? 'Pemilik Budaya' : name);
+    final storedShop = ownerProfileData['store'] ?? '';
+    final displayShop = storedShop != 'Toko Sari Budaya' && storedShop.trim().isNotEmpty ? storedShop : (shopName.trim().isEmpty ? 'Toko Sari Budaya' : shopName);
+    final hasAddress = (ownerProfileData['address'] ?? '').trim().isNotEmpty;
+    final hasRules = (ownerProfileData['rules'] ?? '').trim().isNotEmpty;
+    final hasDescription = (ownerProfileData['description'] ?? '').trim().isNotEmpty;
+    final setupCount = [displayShop != 'Toko Sari Budaya', hasAddress, hasRules, hasDescription].where((v) => v).length;
+    final setupProgress = setupCount / 4;
+
+    return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
+      // HERO PEMILIK: lebih editorial, profesional, dan berorientasi usaha.
+      Container(clipBehavior: Clip.antiAlias, decoration: BoxDecoration(borderRadius: BorderRadius.circular(30), gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF25291F), Color(0xFF414936), Color(0xFF697052)]), boxShadow: [BoxShadow(color: const Color(0xFF292D22).withValues(alpha: .22), blurRadius: 24, offset: const Offset(0, 12))]), child: Stack(children: [
+        const Positioned(right: -24, top: -37, child: Icon(Icons.store_mall_directory_rounded, size: 190, color: Color(0x16FFFFFF))),
+        const Positioned(right: 35, bottom: -48, child: Icon(Icons.grass_rounded, size: 150, color: Color(0x16FFFFFF))),
+        Positioned(left: -35, top: 105, child: Container(width: 125, height: 125, decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: const Color(0x18FFFFFF), width: 16)))),
+        Padding(padding: const EdgeInsets.all(21), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(children: [Container(width: 74, height: 74, decoration: BoxDecoration(color: const Color(0xFFE8D7BD), borderRadius: BorderRadius.circular(23), border: Border.all(color: const Color(0x55FFFFFF), width: 2), boxShadow: const [BoxShadow(color: Color(0x22000000), blurRadius: 10, offset: Offset(0, 4))]), child: const Icon(Icons.storefront_rounded, size: 42, color: Color(0xFF51432E))), const SizedBox(width: 13), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0x2FFFFFFF), borderRadius: BorderRadius.circular(30), border: Border.all(color: const Color(0x25FFFFFF))), child: const Text('RUANG MITRA', style: TextStyle(color: Color(0xFFE2E4C8), fontSize: 9, letterSpacing: 1.6, fontWeight: FontWeight.w900))), const SizedBox(height: 9), Text(displayName, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 22, height: 1.05, fontWeight: FontWeight.w900)), const SizedBox(height: 6), const Text('Pemilik & pelestari budaya', style: TextStyle(color: Color(0xFFE4E0D1), fontSize: 11.5))]))]),
+          const SizedBox(height: 22), Container(height: 1, color: const Color(0x33FFFFFF)), const SizedBox(height: 16),
+          Row(children: [Container(width: 38, height: 38, decoration: BoxDecoration(color: const Color(0x22FFFFFF), borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.store_rounded, color: Color(0xFFE2E4C8))), const SizedBox(width: 10), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [const Text('TOKO YANG KAMU KELOLA', style: TextStyle(color: Color(0xFFC9C8A4), fontSize: 9, letterSpacing: 1.5, fontWeight: FontWeight.w900)), const SizedBox(height: 5), Text(displayShop, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white, fontSize: 21, height: 1.1, fontWeight: FontWeight.w900))]))]),
+          const SizedBox(height: 11), Row(crossAxisAlignment: CrossAxisAlignment.start, children: [const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFFD9D9B8)), const SizedBox(width: 6), Expanded(child: Text(hasAddress ? ownerProfileData['address']! : 'Tambahkan alamat usaha agar penyewa mengenal lokasi tokomu', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Color(0xFFE4E0D1), fontSize: 11, height: 1.35)))]),
+          const SizedBox(height: 17), Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0x1FFFFFFF), borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0x20FFFFFF))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Row(children: [const Expanded(child: Text('Kesiapan profil usaha', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12))), Text('${(setupProgress * 100).round()}%', style: const TextStyle(color: Color(0xFFE2E4C8), fontSize: 14, fontWeight: FontWeight.w900))]), const SizedBox(height: 10), ClipRRect(borderRadius: BorderRadius.circular(20), child: LinearProgressIndicator(value: setupProgress, minHeight: 7, backgroundColor: const Color(0x40FFFFFF), valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFD9DDB6)))), const SizedBox(height: 9), Text(setupCount == 4 ? 'Profil usaha siap membantu membangun kepercayaan.' : 'Lengkapi toko, lokasi, deskripsi, dan aturan sewa agar calon penyewa mendapat informasi yang jelas.', style: const TextStyle(color: Color(0xFFE4E0D1), fontSize: 11, height: 1.4))])),
+        ])),
+      ])),
+      const SizedBox(height: 25),
+      const _ProfileSectionHeading(icon: Icons.dashboard_customize_rounded, title: 'Kelola tokomu', subtitle: 'Bangun etalase yang jelas dan terpercaya'),
+      const SizedBox(height: 12),
+      Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Expanded(child: _ProfileActionCard(icon: Icons.storefront_rounded, title: 'Profil toko', subtitle: 'Etalase publik', color: const Color(0xFF66704D), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerShopProfilePage(shopName: displayShop))))),
+        const SizedBox(width: 10),
+        Expanded(child: _ProfileActionCard(icon: Icons.fact_check_rounded, title: 'Verifikasi', subtitle: 'Kepercayaan', color: const Color(0xFF9A7650), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerVerificationPage())))),
+        const SizedBox(width: 10),
+        Expanded(child: _ProfileActionCard(icon: Icons.rule_rounded, title: 'Aturan sewa', subtitle: hasRules ? 'Sudah diatur' : 'Atur aturan', color: const Color(0xFF7C8061), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OwnerRentalRulesPage())))),
+      ]),
+      const SizedBox(height: 23),
+      Container(padding: const EdgeInsets.all(17), decoration: BoxDecoration(gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFFE9EBD9), Color(0xFFDDE1CA)]), borderRadius: BorderRadius.circular(23), border: Border.all(color: const Color(0xFFD3D8BF))), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [Container(width: 44, height: 44, decoration: BoxDecoration(color: const Color(0xFFD0D7B8), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.handshake_rounded, color: Color(0xFF596044), size: 25)), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Toko rapi, penyewa lebih tenang', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: teks)), SizedBox(height: 5), Text('Jelaskan kondisi barang, deposit, durasi sewa, dan proses pengembalian sebelum transaksi. Informasi yang jelas membantu mengurangi salah paham.', style: TextStyle(fontSize: 12, height: 1.5, color: Color(0xFF686A55)))]))])),
+      const SizedBox(height: 25),
+      const _ProfileSectionHeading(icon: Icons.admin_panel_settings_rounded, title: 'Akun & keamanan', subtitle: 'Jaga informasi dan komunikasi tetap tertata'),
+      const SizedBox(height: 12),
+      _ProfileMenuTile(icon: Icons.manage_accounts_rounded, title: 'Identitas pemilik', subtitle: 'Nama dan kontak pengelola', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => OwnerIdentityPage(initialName: displayName)))),
+      _ProfileMenuTile(icon: Icons.support_agent_rounded, title: 'Pusat bantuan & sengketa', subtitle: 'Bantuan untuk kendala transaksi', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpDisputePage()))),
+      _ProfileMenuTile(icon: Icons.settings_suggest_rounded, title: 'Pengaturan aplikasi', subtitle: 'Notifikasi dan privasi akun', onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),
+      const SizedBox(height: 10),
+      OutlinedButton.icon(onPressed: () => Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false), icon: const Icon(Icons.logout_rounded), label: const Text('Keluar dari akun'), style: OutlinedButton.styleFrom(foregroundColor: const Color(0xFF596044), side: const BorderSide(color: Color(0xFFCCD0B8)), padding: const EdgeInsets.symmetric(vertical: 15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(17)))),
+      const SizedBox(height: 14), const Center(child: Text('RAGAMNUSA  •  Mitra pelestari budaya', style: TextStyle(fontSize: 10, letterSpacing: .3, color: Color(0xFF9A8A7C)))),
+    ]);
+  }
+}
+
+class _ProfileSectionHeading extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  const _ProfileSectionHeading({required this.icon, required this.title, required this.subtitle});
+  @override
+  Widget build(BuildContext context) => Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Container(width: 39, height: 39, decoration: BoxDecoration(color: const Color(0xFFEDE3D6), borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: kayu, size: 21)),
+    const SizedBox(width: 11), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF817366), height: 1.35))])),
   ]);
 }
 
-class ProfilePage extends StatelessWidget {
-  final String name, role;
-  const ProfilePage({super.key, required this.name, required this.role});
+class _ProfileChecklistRow extends StatelessWidget {
+  final bool done;
+  final String title;
+  final String? action;
+  final VoidCallback onTap;
+  const _ProfileChecklistRow({required this.done, required this.title, required this.action, required this.onTap});
   @override
-  Widget build(BuildContext context) => ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18)),
-            child: Row(children: [
-              const CircleAvatar(radius: 27, backgroundColor: Color(0xFFE8D9C7), child: Icon(Icons.person, color: kayu, size: 30)),
-              const SizedBox(width: 13),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-                const SizedBox(height: 4),
-                Text(role, style: const TextStyle(color: terracotta)),
-              ])),
-            ]),
-          ),
-          const SizedBox(height: 15),
-          ListTile(leading: const Icon(Icons.badge_outlined, color: kayu), title: const Text('Data identitas'), trailing: const Icon(Icons.chevron_right), onTap: () => notice(context, 'Pengelolaan identitas perlu backend.')),
-          ListTile(leading: const Icon(Icons.chat_bubble_outline, color: kayu), title: const Text('Pusat bantuan & sengketa'), subtitle: const Text('FAQ, laporkan masalah, ajukan sengketa'), trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HelpDisputePage()))),
-          ListTile(leading: const Icon(Icons.settings_outlined, color: kayu), title: const Text('Pengaturan'), subtitle: const Text('Notifikasi, privasi, dan tampilan'), trailing: const Icon(Icons.chevron_right), onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsPage()))),
-          const SizedBox(height: 15),
-          PrimaryButton('Keluar ke Login', () => Navigator.pushAndRemoveUntil(
-            context, MaterialPageRoute(builder: (_) => const LoginPage()), (route) => false,
-          ), outline: true),
-        ],
-      );
+  Widget build(BuildContext context) => Row(children: [Icon(done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: done ? zaitun : const Color(0xFFB58A63)), const SizedBox(width: 9), Expanded(child: Text(title, style: const TextStyle(fontSize: 12, color: teks))), if (action != null) TextButton(onPressed: onTap, style: TextButton.styleFrom(visualDensity: VisualDensity.compact), child: Text(action!))]);
 }
 
+class RenterPersonalDataPage extends StatefulWidget {
+  final String initialName;
+  const RenterPersonalDataPage({super.key, required this.initialName});
+  @override State<RenterPersonalDataPage> createState() => _RenterPersonalDataPageState();
+}
+class _RenterPersonalDataPageState extends State<RenterPersonalDataPage> {
+  late final name = TextEditingController(text: renterProfileData['name'] == 'Sahabat Nusantara' ? widget.initialName : renterProfileData['name']);
+  late final phone = TextEditingController(text: renterProfileData['phone']);
+  late final email = TextEditingController(text: renterProfileData['email']);
+  @override void dispose() { name.dispose(); phone.dispose(); email.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => Scaffold(backgroundColor: gading, appBar: AppBar(title: const Text('Data pribadi')), body: ListView(padding: const EdgeInsets.all(18), children: [
+    const Text('Informasi akun', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 6), const Text('Pastikan kontak aktif agar pemilik mudah menghubungimu terkait pesanan.'), const SizedBox(height: 18),
+    TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Nama lengkap', prefixIcon: Icon(Icons.person_outline))), const SizedBox(height: 12),
+    TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Nomor telepon', prefixIcon: Icon(Icons.phone_outlined))), const SizedBox(height: 12),
+    TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline))), const SizedBox(height: 18),
+    PrimaryButton('Simpan data', () { if (name.text.trim().isEmpty) { notice(context, 'Nama lengkap tidak boleh kosong.'); return; } renterProfileData['name'] = name.text.trim(); renterProfileData['phone'] = phone.text.trim(); renterProfileData['email'] = email.text.trim(); notice(context, 'Data pribadi diperbarui untuk sesi ini.'); Navigator.pop(context); }),
+    const SizedBox(height: 10), const Text('Data tersimpan selama aplikasi berjalan. Integrasi akun/backend diperlukan untuk penyimpanan permanen.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+  ]));
+}
+
+class RenterAddressPage extends StatefulWidget { const RenterAddressPage({super.key}); @override State<RenterAddressPage> createState() => _RenterAddressPageState(); }
+class _RenterAddressPageState extends State<RenterAddressPage> {
+  late final address = TextEditingController(text: renterProfileData['address']);
+  late final city = TextEditingController(text: renterProfileData['city']);
+  late final notes = TextEditingController(text: renterProfileData['notes']);
+  @override void dispose() { address.dispose(); city.dispose(); notes.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => Scaffold(backgroundColor: gading, appBar: AppBar(title: const Text('Buku alamat')), body: ListView(padding: const EdgeInsets.all(18), children: [
+    Container(padding: const EdgeInsets.all(18), decoration: BoxDecoration(color: const Color(0xFFEDE5D8), borderRadius: BorderRadius.circular(20)), child: const Row(children: [Icon(Icons.local_shipping_outlined, color: kayu, size: 30), SizedBox(width: 12), Expanded(child: Text('Alamat membantu pemilik memperkirakan pengantaran. Pastikan detail lokasi mudah ditemukan.', style: TextStyle(height: 1.4, color: teks)))])), const SizedBox(height: 18),
+    TextField(controller: address, maxLines: 2, decoration: const InputDecoration(labelText: 'Alamat lengkap', hintText: 'Nama jalan, nomor rumah, RT/RW', prefixIcon: Icon(Icons.home_outlined), alignLabelWithHint: true)), const SizedBox(height: 12),
+    TextField(controller: city, decoration: const InputDecoration(labelText: 'Kota / Kabupaten', prefixIcon: Icon(Icons.location_city_outlined))), const SizedBox(height: 12),
+    TextField(controller: notes, maxLines: 3, decoration: const InputDecoration(labelText: 'Patokan / catatan kurir', hintText: 'Warna pagar, nama gedung, jam penerimaan', alignLabelWithHint: true)), const SizedBox(height: 18),
+    PrimaryButton('Simpan alamat', () { if (address.text.trim().isEmpty || city.text.trim().isEmpty) { notice(context, 'Alamat dan kota wajib diisi.'); return; } renterProfileData['address'] = address.text.trim(); renterProfileData['city'] = city.text.trim(); renterProfileData['notes'] = notes.text.trim(); notice(context, 'Alamat tersimpan untuk sesi ini.'); Navigator.pop(context); }),
+  ]));
+}
+
+class RentalPreferencesPage extends StatefulWidget { const RentalPreferencesPage({super.key}); @override State<RentalPreferencesPage> createState() => _RentalPreferencesPageState(); }
+class _RentalPreferencesPageState extends State<RentalPreferencesPage> {
+  @override Widget build(BuildContext context) => Scaffold(backgroundColor: gading, appBar: AppBar(title: const Text('Preferensi sewa')), body: ListView(padding: const EdgeInsets.all(18), children: [
+    const Text('Cara sewa yang nyaman', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 6), const Text('Pilih pengingat dan metode penerimaan yang paling cocok untukmu.'), const SizedBox(height: 18),
+    Container(decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)), child: Column(children: [
+      SwitchListTile(value: renterPreferences['chat']!, onChanged: (v) => setState(() => renterPreferences['chat'] = v), activeThumbColor: kayu, title: const Text('Pemberitahuan chat'), subtitle: const Text('Pesan dari pemilik terkait sewa')),
+      const Divider(height: 1), SwitchListTile(value: renterPreferences['delivery']!, onChanged: (v) => setState(() => renterPreferences['delivery'] = v), activeThumbColor: kayu, title: const Text('Utamakan pengantaran'), subtitle: const Text('Jika produk dan pemilik menyediakan opsi ini')),
+      const Divider(height: 1), SwitchListTile(value: renterPreferences['pickup']!, onChanged: (v) => setState(() => renterPreferences['pickup'] = v), activeThumbColor: kayu, title: const Text('Utamakan ambil sendiri'), subtitle: const Text('Konfirmasi lokasi dan waktu dengan pemilik')),
+      const Divider(height: 1), SwitchListTile(value: renterPreferences['reminder']!, onChanged: (v) => setState(() => renterPreferences['reminder'] = v), activeThumbColor: kayu, title: const Text('Pengingat pengembalian'), subtitle: const Text('Pengingat lokal demo, belum berupa notifikasi perangkat')),
+    ])), const SizedBox(height: 16), PrimaryButton('Simpan preferensi', () { notice(context, 'Preferensi diperbarui untuk sesi ini.'); Navigator.pop(context); }),
+  ]));
+}
+
+class OwnerIdentityPage extends StatefulWidget { final String initialName; const OwnerIdentityPage({super.key, required this.initialName}); @override State<OwnerIdentityPage> createState() => _OwnerIdentityPageState(); }
+class _OwnerIdentityPageState extends State<OwnerIdentityPage> {
+  late final name = TextEditingController(text: ownerProfileData['name'] == 'Pemilik Budaya' ? widget.initialName : ownerProfileData['name']);
+  late final phone = TextEditingController(text: ownerProfileData['phone']);
+  late final email = TextEditingController(text: ownerProfileData['email']);
+  @override void dispose() { name.dispose(); phone.dispose(); email.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => Scaffold(backgroundColor: gading, appBar: AppBar(title: const Text('Identitas pemilik')), body: ListView(padding: const EdgeInsets.all(18), children: [
+    const Text('Kenali mitra toko', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 6), const Text('Kontak yang benar memudahkan koordinasi pengiriman, pengembalian, dan penyelesaian kendala.'), const SizedBox(height: 18),
+    TextField(controller: name, decoration: const InputDecoration(labelText: 'Nama pemilik', prefixIcon: Icon(Icons.person_outline))), const SizedBox(height: 12), TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Nomor telepon', prefixIcon: Icon(Icons.phone_outlined))), const SizedBox(height: 12), TextField(controller: email, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Email', prefixIcon: Icon(Icons.mail_outline))), const SizedBox(height: 18),
+    PrimaryButton('Simpan identitas', () { if (name.text.trim().isEmpty) { notice(context, 'Nama pemilik wajib diisi.'); return; } ownerProfileData['name'] = name.text.trim(); ownerProfileData['phone'] = phone.text.trim(); ownerProfileData['email'] = email.text.trim(); notice(context, 'Identitas pemilik diperbarui untuk sesi ini.'); Navigator.pop(context); }), const SizedBox(height: 10), const Text('Prototype lokal: belum ada verifikasi kontak atau penyimpanan server.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+  ]));
+}
+
+class OwnerRentalRulesPage extends StatefulWidget { const OwnerRentalRulesPage({super.key}); @override State<OwnerRentalRulesPage> createState() => _OwnerRentalRulesPageState(); }
+class _OwnerRentalRulesPageState extends State<OwnerRentalRulesPage> {
+  late final rules = TextEditingController(text: ownerProfileData['rules']);
+  @override void dispose() { rules.dispose(); super.dispose(); }
+  @override Widget build(BuildContext context) => Scaffold(backgroundColor: gading, appBar: AppBar(title: const Text('Aturan sewa')), body: ListView(padding: const EdgeInsets.all(18), children: [
+    const Text('Aturan yang jelas melindungi kedua pihak', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)), const SizedBox(height: 7), const Text('Tuliskan aturan yang bisa dipahami sebelum penyewa melakukan pembayaran.'), const SizedBox(height: 16),
+    Container(padding: const EdgeInsets.all(15), decoration: BoxDecoration(color: const Color(0xFFE7E8D9), borderRadius: BorderRadius.circular(18)), child: const Text('Sebaiknya jelaskan: durasi sewa, tenggat pengembalian, biaya keterlambatan, ketentuan deposit, dokumentasi kondisi barang, dan prosedur jika barang rusak.', style: TextStyle(height: 1.5, color: teks))), const SizedBox(height: 14),
+    TextField(controller: rules, minLines: 7, maxLines: 12, maxLength: 1200, decoration: const InputDecoration(labelText: 'Ketentuan toko', alignLabelWithHint: true, hintText: 'Tuliskan aturan sewa secara rinci')), const SizedBox(height: 16),
+    PrimaryButton('Simpan aturan', () { if (rules.text.trim().isEmpty) { notice(context, 'Aturan sewa tidak boleh kosong.'); return; } ownerProfileData['rules'] = rules.text.trim(); notice(context, 'Aturan tersimpan untuk sesi ini. Pastikan aturan ditampilkan kepada penyewa sebelum transaksi.'); Navigator.pop(context); }), const SizedBox(height: 10), const Text('Aturan ini tersimpan di memori aplikasi saat ini; belum otomatis tampil di halaman produk atau tersinkron ke server.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+  ]));
+}
+
+class _ProfileActionCard extends StatelessWidget {
+  final IconData icon;
+  final String title, subtitle;
+  final Color color;
+  final VoidCallback onTap;
+  const _ProfileActionCard({required this.icon, required this.title, required this.subtitle, required this.color, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white, borderRadius: BorderRadius.circular(20),
+    child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(20), child: Padding(
+      padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Container(width: 43, height: 43, decoration: BoxDecoration(color: color.withValues(alpha: .13), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: color, size: 23)),
+        const SizedBox(height: 13), Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Color(0xFF302820))),
+        const SizedBox(height: 3), Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF817366))),
+      ]),
+    )),
+  );
+}
+
+class _ProfileMenuTile extends StatelessWidget {
+  final IconData icon;
+  final String title, subtitle;
+  final VoidCallback onTap;
+  const _ProfileMenuTile({required this.icon, required this.title, required this.subtitle, required this.onTap});
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(bottom: 8),
+    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+    child: ListTile(
+      onTap: onTap, contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      leading: Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFFF3EADF), borderRadius: BorderRadius.circular(13)), child: Icon(icon, color: kayu, size: 22)),
+      title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: Color(0xFF302820))),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: Color(0xFF817366))),
+      trailing: const Icon(Icons.chevron_right_rounded, color: Color(0xFFAA9887)),
+    ),
+  );
+}
 
 int _parsePrice(String value) {
   final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
   return int.tryParse(digits) ?? 75000;
+}
+
+int _parseNominal(String value) {
+  // Terima input seperti 20000, 20.000, Rp 20.000, 20,000, atau 1.500.000.
+  final digits = value.replaceAll(RegExp(r'[^0-9]'), '');
+  return int.tryParse(digits) ?? 0;
+}
+
+String _formatRibuan(String digits) {
+  final clean = digits.replaceFirst(RegExp(r'^0+(?=\d)'), '');
+  if (clean.isEmpty) return '';
+  return clean.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => '.');
+}
+
+/// Mengubah nominal saat diketik: 20000 -> 20.000.
+/// Jika pengguna menempelkan teks dengan Rp, titik, atau koma, semua tetap dinormalisasi.
+class NominalRupiahInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final digitsBeforeCursor = newValue.text
+        .substring(0, newValue.selection.extentOffset.clamp(0, newValue.text.length).toInt())
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .length;
+    final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    final formatted = _formatRibuan(digits);
+    var cursor = 0;
+    var seenDigits = 0;
+    while (cursor < formatted.length && seenDigits < digitsBeforeCursor) {
+      if (RegExp(r'[0-9]').hasMatch(formatted[cursor])) seenDigits++;
+      cursor++;
+    }
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: cursor),
+      composing: TextRange.empty,
+    );
+  }
 }
 
 String _rupiah(int value) => 'Rp${value.toString().replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => '.')}';
@@ -1784,6 +2712,19 @@ class _PaymentPageState extends State<PaymentPage> {
   bool sturdyBox = false;
   bool extraPadding = false;
   bool waterproofWrap = false;
+  final recipientController = TextEditingController();
+  final phoneController = TextEditingController();
+  final addressController = TextEditingController();
+  final notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    recipientController.dispose();
+    phoneController.dispose();
+    addressController.dispose();
+    notesController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1814,6 +2755,16 @@ class _PaymentPageState extends State<PaymentPage> {
           _summaryRow('Total yang dibayar', _rupiah(total), bold: true),
         ])),
         const SizedBox(height: 20),
+        const Text('Data penerima dan alamat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 8),
+        TextField(controller: recipientController, decoration: const InputDecoration(labelText: 'Nama penerima', prefixIcon: Icon(Icons.person_outline))),
+        const SizedBox(height: 10),
+        TextField(controller: phoneController, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Nomor telepon aktif', prefixIcon: Icon(Icons.phone_outlined))),
+        const SizedBox(height: 10),
+        TextField(controller: addressController, minLines: 2, maxLines: 3, decoration: const InputDecoration(labelText: 'Alamat lengkap / titik pengambilan', prefixIcon: Icon(Icons.location_on_outlined))),
+        const SizedBox(height: 10),
+        TextField(controller: notesController, maxLines: 2, decoration: const InputDecoration(labelText: 'Catatan untuk pemilik/kurir (opsional)', hintText: 'Patokan alamat, jam penerimaan, dll.')),
+        const SizedBox(height: 20),
         const Text('Pilih pengiriman / kurir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(initialValue: courier, isExpanded: true, decoration: const InputDecoration(labelText: 'Layanan kurir'), items: couriers.map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis))).toList(), onChanged: (v) => setState(() => courier = v ?? courier)),
@@ -1829,6 +2780,14 @@ class _PaymentPageState extends State<PaymentPage> {
         CheckboxListTile(value: sturdyBox, activeColor: kayu, contentPadding: EdgeInsets.zero, title: const Text('Box tambahan'), subtitle: const Text('Kotak pelindung · Rp8.000'), onChanged: (v) => setState(() => sturdyBox = v ?? false)),
         CheckboxListTile(value: extraPadding, activeColor: kayu, contentPadding: EdgeInsets.zero, title: const Text('Bantalan pelindung ekstra'), subtitle: const Text('Foam/kertas pelindung · Rp7.000'), onChanged: (v) => setState(() => extraPadding = v ?? false)),
         CheckboxListTile(value: waterproofWrap, activeColor: kayu, contentPadding: EdgeInsets.zero, title: const Text('Bungkus tahan air'), subtitle: const Text('Lapisan pelindung air · Rp3.000'), onChanged: (v) => setState(() => waterproofWrap = v ?? false)),
+        const SizedBox(height: 12),
+        _surface(const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Keamanan dan pengembalian', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: kayu)),
+          SizedBox(height: 7),
+          Text('Sebelum barang dikirim, pemilik dan penyewa sebaiknya menyimpan foto kondisi serta daftar kelengkapan. Saat pengembalian, kedua pihak memeriksa kondisi barang dan mencatat bukti serah terima.', style: TextStyle(height: 1.45)),
+          SizedBox(height: 6),
+          Text('Deposit bukan biaya tambahan permanen. Pengembalian atau potongan harus mengikuti perjanjian dan bukti kondisi barang.', style: TextStyle(fontSize: 12, height: 1.4, color: Color(0xFF78695D))),
+        ])),
         const SizedBox(height: 12),
         const Text('Metode pembayaran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
         const SizedBox(height: 8),
@@ -1892,7 +2851,8 @@ class _PaymentPageState extends State<PaymentPage> {
         const Text('Mode demo: rekening, e-wallet, ongkir, dan QR di atas bukan transaksi sungguhan. Biaya kurir final perlu diverifikasi dengan layanan pengiriman.', style: TextStyle(fontSize: 12, color: Color(0xFF78695D))),
         CheckboxListTile(value: agree, activeColor: kayu, contentPadding: EdgeInsets.zero, onChanged: (v) => setState(() => agree = v ?? false), title: const Text('Saya menyetujui ketentuan sewa, deposit, pengiriman, dan sengketa.', style: TextStyle(fontSize: 13))),
         PrimaryButton('Konfirmasi Pesanan', () {
-          if (!agree) { notice(context, 'Setujui ketentuan sewa terlebih dahulu.'); return; }
+          if (recipientController.text.trim().isEmpty || phoneController.text.trim().isEmpty || addressController.text.trim().isEmpty) { notice(context, 'Lengkapi nama, nomor telepon, dan alamat penerima.'); return; }
+                  if (!agree) { notice(context, 'Setujui ketentuan sewa terlebih dahulu.'); return; }
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => PaymentResultPage(productTitle: widget.productTitle, total: total, method: '$method ($paymentDetail)', startDate: widget.startDate, endDate: widget.endDate)));
         }),
       ]),
@@ -1944,19 +2904,105 @@ class PaymentResultPage extends StatelessWidget {
   ])));
 }
 
-class OrdersPage extends StatelessWidget {
+class OrdersPage extends StatefulWidget {
   const OrdersPage({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(appBar: AppBar(title: const Text('Pesanan Saya')), body: ListView(padding: const EdgeInsets.all(18), children: [
-    Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)), child: const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Belum ada pesanan tersimpan', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)), SizedBox(height: 6), Text('Pesanan dari alur pembayaran demo akan ditampilkan di sini setelah dihubungkan ke penyimpanan aplikasi/backend.'), SizedBox(height: 12), Chip(avatar: Icon(Icons.info_outline, size: 17), label: Text('Mode prototype'))])),
-    const SizedBox(height: 16),
-    const Text('Status pesanan yang akan digunakan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-    const SizedBox(height: 8),
-    const _StatusRow(color: terracotta, title: 'Menunggu pembayaran', detail: 'Penyewa menyelesaikan pembayaran.'),
-    const _StatusRow(color: zaitun, title: 'Menunggu konfirmasi', detail: 'Pemilik memeriksa permintaan sewa.'),
-    const _StatusRow(color: Colors.blueGrey, title: 'Dikonfirmasi', detail: 'Pesanan disetujui dan jadwal dikunci.'),
-    const _StatusRow(color: Colors.redAccent, title: 'Dibatalkan / sengketa', detail: 'Pesanan dibatalkan atau sedang ditinjau.'),
-  ]));
+  State<OrdersPage> createState() => _OrdersPageState();
+}
+
+class _OrdersPageState extends State<OrdersPage> {
+  bool demoReviewed = false;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Pesanan Saya')),
+    body: ListView(padding: const EdgeInsets.all(18), children: [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Row(children: [Icon(Icons.check_circle, color: zaitun), SizedBox(width: 8), Expanded(child: Text('Contoh pesanan selesai', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)))]),
+          const SizedBox(height: 8),
+          const Text('Kebaya Jawa · Toko Sari Budaya'),
+          const SizedBox(height: 4),
+          const Text('Status: Selesai dikembalikan', style: TextStyle(color: zaitun, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 12),
+          if (demoReviewed)
+            const Chip(avatar: Icon(Icons.star, color: Color(0xFFFFB300), size: 18), label: Text('Ulasan sudah dikirim'))
+          else
+            PrimaryButton('Beri Rating & Ulasan', () async {
+              final result = await Navigator.push<bool>(context, MaterialPageRoute(builder: (_) => const RenterReviewPage(productTitle: 'Kebaya Jawa', shopName: 'Toko Sari Budaya')));
+              if (result == true && mounted) setState(() => demoReviewed = true);
+            }),
+          const SizedBox(height: 8),
+          const Text('Pesanan ini adalah contoh demo agar alur rating dapat dicoba. Data belum disimpan ke database.', style: TextStyle(fontSize: 11, color: Color(0xFF78695D))),
+        ]),
+      ),
+      const SizedBox(height: 16),
+      const Text('Status pesanan yang akan digunakan', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 8),
+      const _StatusRow(color: terracotta, title: 'Menunggu pembayaran', detail: 'Penyewa menyelesaikan pembayaran.'),
+      const _StatusRow(color: zaitun, title: 'Menunggu konfirmasi', detail: 'Pemilik memeriksa permintaan sewa.'),
+      const _StatusRow(color: Colors.blueGrey, title: 'Dikonfirmasi', detail: 'Pesanan disetujui dan jadwal dikunci.'),
+      const _StatusRow(color: zaitun, title: 'Selesai', detail: 'Setelah sewa selesai, penyewa dapat memberi rating dan ulasan.'),
+      const _StatusRow(color: Colors.redAccent, title: 'Dibatalkan / sengketa', detail: 'Pesanan dibatalkan atau sedang ditinjau.'),
+    ]),
+  );
+}
+
+class RenterReviewPage extends StatefulWidget {
+  final String productTitle;
+  final String shopName;
+  const RenterReviewPage({super.key, required this.productTitle, required this.shopName});
+  @override
+  State<RenterReviewPage> createState() => _RenterReviewPageState();
+}
+
+class _RenterReviewPageState extends State<RenterReviewPage> {
+  int rating = 5;
+  final commentController = TextEditingController();
+  bool recommend = true;
+
+  @override
+  void dispose() { commentController.dispose(); super.dispose(); }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Rating & Ulasan')),
+    body: ListView(padding: const EdgeInsets.all(20), children: [
+      const Text('Bagaimana pengalaman sewamu?', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900, color: teks)),
+      const SizedBox(height: 6),
+      Text('${widget.productTitle} · ${widget.shopName}', style: const TextStyle(color: Color(0xFF78695D))),
+      const SizedBox(height: 24),
+      Center(child: Wrap(spacing: 6, children: List.generate(5, (index) => IconButton(
+        onPressed: () => setState(() => rating = index + 1),
+        icon: Icon(index < rating ? Icons.star_rounded : Icons.star_outline_rounded, size: 38, color: const Color(0xFFFFB300)),
+        tooltip: '${index + 1} bintang',
+      )))),
+      Center(child: Text(['', 'Kurang puas', 'Cukup', 'Baik', 'Puas', 'Sangat puas'][rating], style: const TextStyle(fontWeight: FontWeight.w800, color: kayu, fontSize: 16))),
+      const SizedBox(height: 22),
+      TextField(controller: commentController, minLines: 4, maxLines: 6, maxLength: 500, decoration: const InputDecoration(labelText: 'Tulis ulasan', hintText: 'Ceritakan kondisi barang, proses sewa, dan pengalamanmu...', alignLabelWithHint: true)),
+      const SizedBox(height: 8),
+      SwitchListTile(contentPadding: EdgeInsets.zero, activeThumbColor: kayu, title: const Text('Saya merekomendasikan toko ini'), value: recommend, onChanged: (v) => setState(() => recommend = v)),
+      const SizedBox(height: 18),
+      PrimaryButton('Kirim Ulasan', () {
+        final comment = commentController.text.trim();
+        if (comment.isEmpty) { notice(context, 'Tulis komentar terlebih dahulu.'); return; }
+        ragamNusaReviews.insert(0, {
+          'name': 'Penyewa Demo',
+          'product': widget.productTitle,
+          'date': 'Hari ini',
+          'rating': rating,
+          'comment': '$comment${recommend ? '\n\nSaya merekomendasikan toko ini.' : ''}',
+          'reply': '',
+        });
+        notice(context, 'Ulasan demo berhasil dikirim dan akan terlihat di halaman pemilik.');
+        Navigator.pop(context, true);
+      }),
+      const SizedBox(height: 10),
+      const Text('Mode prototype: ulasan hanya tersimpan sementara di memori aplikasi. Untuk menyimpan permanen dan menghubungkan akun penyewa-pemilik, diperlukan database/backend.', style: TextStyle(fontSize: 11, height: 1.5, color: Color(0xFF78695D))),
+    ]),
+  );
 }
 
 class _StatusRow extends StatelessWidget {
@@ -2007,13 +3053,6 @@ class _HelpDisputePageState extends State<HelpDisputePage> {
     }),
     const SizedBox(height: 8), const Text('Prototype ini belum mengirim laporan ke server atau menerapkan sanksi nyata.', style: TextStyle(fontSize: 12, color: Color(0xFF78695D))),
   ]));
-}
-
-class _FaqTile extends StatelessWidget {
-  final String question, answer;
-  const _FaqTile({required this.question, required this.answer});
-  @override
-  Widget build(BuildContext context) => ExpansionTile(title: Text(question, style: const TextStyle(fontWeight: FontWeight.w700)), children: [Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 14), child: Align(alignment: Alignment.centerLeft, child: Text(answer)))]);
 }
 
 class SettingsPage extends StatefulWidget {
