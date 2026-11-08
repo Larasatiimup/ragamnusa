@@ -18,6 +18,22 @@ const List<String> ragamNusaCategories = [
   'Transportasi Tradisional',
 ];
 
+// Data wilayah contoh. Untuk produksi, gunakan API/database wilayah Indonesia.
+const Map<String, List<String>> wilayahIndonesia = {
+  'Bali': ['Denpasar', 'Badung', 'Gianyar', 'Tabanan', 'Buleleng'],
+  'DI Yogyakarta': ['Kota Yogyakarta', 'Sleman', 'Bantul', 'Kulon Progo', 'Gunungkidul'],
+  'Jawa Barat': ['Bandung', 'Bekasi', 'Bogor', 'Depok', 'Cirebon', 'Garut'],
+  'Jawa Tengah': ['Semarang', 'Surakarta', 'Pekalongan', 'Magelang', 'Banyumas'],
+  'Jawa Timur': ['Surabaya', 'Malang', 'Sidoarjo', 'Gresik', 'Kediri'],
+  'DKI Jakarta': ['Jakarta Pusat', 'Jakarta Selatan', 'Jakarta Barat', 'Jakarta Timur', 'Jakarta Utara'],
+  'Sumatera Utara': ['Medan', 'Binjai', 'Pematangsiantar', 'Deli Serdang'],
+  'Sumatera Barat': ['Padang', 'Bukittinggi', 'Payakumbuh', 'Agam'],
+  'Sulawesi Selatan': ['Makassar', 'Parepare', 'Palopo', 'Gowa'],
+  'Kalimantan Barat': ['Pontianak', 'Singkawang', 'Kubu Raya'],
+};
+final List<String> daftarProvinsi = wilayahIndonesia.keys.toList()..sort();
+
+
 class RagamNusaApp extends StatelessWidget {
   const RagamNusaApp({super.key});
   @override
@@ -68,7 +84,7 @@ final Map<String, String> renterProfileData = {
 };
 final Map<String, String> ownerProfileData = {
   'name': 'Pemilik Budaya', 'phone': '', 'email': '', 'store': 'Toko Sari Budaya',
-  'address': 'Yogyakarta, Indonesia', 'hours': 'Senin–Sabtu, 09.00–17.00',
+  'address': 'Yogyakarta, Indonesia', 'city': 'Kota Yogyakarta', 'province': 'DI Yogyakarta', 'hours': 'Senin–Sabtu, 09.00–17.00',
   'description': 'Menyewakan busana dan perlengkapan budaya Indonesia yang terawat.',
   'rules': 'Gunakan barang dengan hati-hati. Pengembalian mengikuti tanggal pada pesanan. Kerusakan perlu didokumentasikan dan dibahas bersama.',
 };
@@ -454,6 +470,8 @@ class _RegisterPageState extends State<RegisterPage> {
   final confirm = TextEditingController();
   final shopName = TextEditingController();
   final shopAddress = TextEditingController();
+  String? shopProvince;
+  String? shopCity;
   bool hidePassword = true;
   bool agree = false;
 
@@ -498,6 +516,13 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
     final userName = name.text.trim();
+    if (isOwner) {
+      ownerProfileData['name'] = userName;
+      ownerProfileData['store'] = shopName.text.trim();
+      ownerProfileData['address'] = shopAddress.text.trim();
+      ownerProfileData['province'] = shopProvince ?? '';
+      ownerProfileData['city'] = shopCity ?? '';
+    }
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
@@ -573,6 +598,21 @@ class _RegisterPageState extends State<RegisterPage> {
                 field('Alamat toko', shopAddress,
                     hint: 'Masukkan alamat toko',
                     prefix: const Icon(Icons.location_on_outlined), lines: 2),
+                DropdownButtonFormField<String>(
+                  initialValue: shopProvince,
+                  decoration: const InputDecoration(labelText: 'Provinsi toko', prefixIcon: Icon(Icons.map_outlined)),
+                  items: daftarProvinsi.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                  validator: (v) => v == null ? 'Pilih provinsi toko.' : null,
+                  onChanged: (v) => setState(() { shopProvince = v; shopCity = null; }),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: shopCity,
+                  decoration: const InputDecoration(labelText: 'Kota/Kabupaten toko', prefixIcon: Icon(Icons.location_city_outlined)),
+                  items: (shopProvince == null ? <String>[] : wilayahIndonesia[shopProvince] ?? <String>[]).map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                  validator: (v) => v == null ? 'Pilih kota/kabupaten toko.' : null,
+                  onChanged: shopProvince == null ? null : (v) => setState(() => shopCity = v),
+                ),
               ],
               const SizedBox(height: 10),
               const Text('KEAMANAN AKUN',
@@ -824,17 +864,22 @@ class _ProductMiniCard extends StatelessWidget {
 }
 
 class _CatalogItem {
-  final String title, category, price, location, province, imageUrl;
-  const _CatalogItem(this.title, this.category, this.price, this.location, this.province, this.imageUrl);
+  final String title, category, price, city, province, imageUrl, store;
+  final double rating, distanceKm;
+  const _CatalogItem(this.title, this.category, this.price, this.city, this.province, this.imageUrl,
+      {required this.store, required this.rating, required this.distanceKm});
 }
 
-const List<_CatalogItem> _catalogItems = [
-  _CatalogItem('Paket Busana Adat Bali', 'Pakaian Adat', '150000', 'Denpasar', 'Bali', 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600'),
-  _CatalogItem('Gamelan Mini', 'Alat Musik Tradisional', '250000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600'),
-  _CatalogItem('Gebyok Pelaminan Jawa', 'Properti Event & Wedding', '750000', 'Surakarta', 'Jawa Tengah', 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600'),
-  _CatalogItem('Set Alat Saji Tumpeng Tradisional', 'Properti Kuliner', '100000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600'),
-  _CatalogItem('Paket Alat Membatik', 'Perlengkapan Workshop Kriya', '125000', 'Pekalongan', 'Jawa Tengah', 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600'),
-  _CatalogItem('Andong Tradisional', 'Transportasi Tradisional', '500000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600'),
+// Beberapa toko dapat menawarkan produk yang sama dengan harga dan rating berbeda.
+final List<_CatalogItem> _catalogItems = [
+  _CatalogItem('Paket Busana Adat Bali', 'Pakaian Adat', '150000', 'Denpasar', 'Bali', 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600', store: 'Sanggar Sekar Bali', rating: 4.9, distanceKm: 12),
+  _CatalogItem('Paket Busana Adat Bali', 'Pakaian Adat', '120000', 'Surabaya', 'Jawa Timur', 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600', store: 'Galeri Laras Budaya', rating: 4.7, distanceKm: 35),
+  _CatalogItem('Paket Busana Adat Bali', 'Pakaian Adat', '175000', 'Bandung', 'Jawa Barat', 'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=600', store: 'Pusaka Nusantara', rating: 4.8, distanceKm: 120),
+  _CatalogItem('Gamelan Mini', 'Alat Musik Tradisional', '250000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1511379938547-c1f69419868d?w=600', store: 'Toko Sari Budaya', rating: 4.8, distanceKm: 8),
+  _CatalogItem('Gebyok Pelaminan Jawa', 'Properti Event & Wedding', '750000', 'Surakarta', 'Jawa Tengah', 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600', store: 'Pawon Jawa', rating: 4.9, distanceKm: 75),
+  _CatalogItem('Set Alat Saji Tumpeng Tradisional', 'Properti Kuliner', '100000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600', store: 'Dapur Tradisi', rating: 4.6, distanceKm: 10),
+  _CatalogItem('Paket Alat Membatik', 'Perlengkapan Workshop Kriya', '125000', 'Pekalongan', 'Jawa Tengah', 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600', store: 'Batik Lestari', rating: 4.9, distanceKm: 90),
+  _CatalogItem('Andong Tradisional', 'Transportasi Tradisional', '500000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600', store: 'Andong Mataram', rating: 4.7, distanceKm: 15),
 ];
 
 class ExplorePage extends StatefulWidget {
@@ -847,14 +892,27 @@ class _ExplorePageState extends State<ExplorePage> {
   String category = 'Semua';
   String query = '';
   String province = 'Seluruh Indonesia';
+  String city = 'Semua kota';
+  String sortBy = 'Rekomendasi';
   final categories = ['Semua', ...ragamNusaCategories];
-  final provinces = const ['Seluruh Indonesia', 'Bali', 'DI Yogyakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 'Kalimantan Barat', 'Kalimantan Selatan', 'Lampung', 'Nusa Tenggara Timur', 'Papua', 'Sulawesi Selatan', 'Sumatera Barat', 'Sumatera Selatan', 'Sumatera Utara'];
+  final sortOptions = const ['Rekomendasi', 'Terdekat', 'Terjauh', 'Termurah', 'Termahal', 'Rating tertinggi'];
   @override
   Widget build(BuildContext context) {
     final shown = _catalogItems.where((p) =>
       (category == 'Semua' || p.category == category) &&
       (province == 'Seluruh Indonesia' || p.province == province) &&
-      ('${p.title} ${p.category} ${p.location} ${p.province}'.toLowerCase().contains(query.toLowerCase()))).toList();
+      (city == 'Semua kota' || p.city == city) &&
+      ('${p.title} ${p.category} ${p.city} ${p.province} ${p.store}'.toLowerCase().contains(query.toLowerCase()))).toList();
+    final List<String> availableCities = province == 'Seluruh Indonesia'
+        ? (wilayahIndonesia.values.expand((e) => e).toSet().toList()..sort())
+        : (wilayahIndonesia[province] ?? <String>[]);
+    switch (sortBy) {
+      case 'Terdekat': shown.sort((a, b) => a.distanceKm.compareTo(b.distanceKm)); break;
+      case 'Terjauh': shown.sort((a, b) => b.distanceKm.compareTo(a.distanceKm)); break;
+      case 'Termurah': shown.sort((a, b) => int.parse(a.price).compareTo(int.parse(b.price))); break;
+      case 'Termahal': shown.sort((a, b) => int.parse(b.price).compareTo(int.parse(a.price))); break;
+      case 'Rating tertinggi': shown.sort((a, b) => b.rating.compareTo(a.rating)); break;
+    }
     return ListView(padding: const EdgeInsets.all(18), children: [
       const Text('Jelajahi Budaya Nusantara', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: teks)),
       const SizedBox(height: 5),
@@ -862,7 +920,11 @@ class _ExplorePageState extends State<ExplorePage> {
       const SizedBox(height: 14),
       TextField(onChanged: (v) => setState(() => query = v), decoration: InputDecoration(hintText: 'Cari produk, kategori, atau daerah...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
       const SizedBox(height: 12),
-      DropdownButtonFormField<String>(initialValue: province, decoration: const InputDecoration(labelText: 'Asal produk', prefixIcon: Icon(Icons.map_outlined)), items: provinces.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => province = v ?? province)),
+      DropdownButtonFormField<String>(initialValue: province, decoration: const InputDecoration(labelText: 'Provinsi toko', prefixIcon: Icon(Icons.map_outlined)), items: ['Seluruh Indonesia', ...daftarProvinsi].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() { province = v ?? province; city = 'Semua kota'; })),
+      const SizedBox(height: 10),
+      DropdownButtonFormField<String>(initialValue: city, decoration: const InputDecoration(labelText: 'Kota/Kabupaten toko', prefixIcon: Icon(Icons.location_city_outlined)), items: ['Semua kota', ...availableCities].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => city = v ?? city)),
+      const SizedBox(height: 10),
+      DropdownButtonFormField<String>(initialValue: sortBy, decoration: const InputDecoration(labelText: 'Urutkan produk', prefixIcon: Icon(Icons.sort)), items: sortOptions.map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(), onChanged: (v) => setState(() => sortBy = v ?? sortBy)),
       const SizedBox(height: 14),
       SizedBox(
         height: 40,
@@ -885,13 +947,14 @@ class _ExplorePageState extends State<ExplorePage> {
       Row(children: [Expanded(child: Text('${shown.length} produk ditemukan', style: const TextStyle(fontWeight: FontWeight.w800, color: teks))), const Icon(Icons.grid_view_rounded, color: terracotta)]),
       const SizedBox(height: 10),
       if (shown.isEmpty) const Padding(padding: EdgeInsets.all(28), child: Center(child: Text('Produk tidak ditemukan. Coba ubah kata kunci atau filter.')))
-      else GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: shown.length, gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14, childAspectRatio: .64), itemBuilder: (context, i) { final p = shown[i]; return _ExploreProduct(title: p.title, category: p.category, price: 'Rp${_rupiah(int.parse(p.price)).substring(2)}', location: p.location, imageUrl: p.imageUrl, province: p.province); }),
+      else GridView.builder(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: shown.length, gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 12, mainAxisSpacing: 14, childAspectRatio: .64), itemBuilder: (context, i) { final p = shown[i]; return _ExploreProduct(title: p.title, category: p.category, price: 'Rp${_rupiah(int.parse(p.price)).substring(2)}', location: p.city, imageUrl: p.imageUrl, province: p.province, store: p.store, rating: p.rating); }),
     ]);
   }
 }
 
 class _ExploreProduct extends StatelessWidget {
-  final String title, category, price, location, imageUrl, province;
+  final String title, category, price, location, imageUrl, province, store;
+  final double rating;
 
   const _ExploreProduct({
     required this.title,
@@ -900,6 +963,8 @@ class _ExploreProduct extends StatelessWidget {
     required this.location,
     required this.imageUrl,
     this.province = '',
+    this.store = 'Toko Budaya',
+    this.rating = 4.8,
   });
 
   @override
@@ -993,6 +1058,9 @@ class _ExploreProduct extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 4),
+              Text(store, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 10, color: Color(0xFF78695D), fontWeight: FontWeight.w700)),
+              Row(children: [const Icon(Icons.star_rounded, size: 13, color: terracotta), Text(' ${rating.toStringAsFixed(1)}', style: const TextStyle(fontSize: 10, color: teks))]),
+              const SizedBox(height: 3),
               Row(
                 children: [
                   const Icon(
@@ -1208,7 +1276,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
           const SizedBox(height: 10),
           TextField(controller: deposit, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Deposit', prefixText: 'Rp ')),
           const SizedBox(height: 10),
-          TextField(controller: location, decoration: const InputDecoration(labelText: 'Lokasi produk / toko')),
+          TextField(controller: location, decoration: const InputDecoration(labelText: 'Kota/Kabupaten toko')),
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(initialValue: condition, decoration: const InputDecoration(labelText: 'Kondisi barang'),
             items: const ['Sangat baik', 'Baik', 'Cukup baik'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
@@ -1269,7 +1337,7 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
             const SizedBox(height: 10),
             TextField(controller: depositController, keyboardType: TextInputType.number, inputFormatters: [NominalRupiahInputFormatter()], decoration: const InputDecoration(labelText: 'Deposit (opsional)', prefixText: 'Rp ', hintText: '0', helperText: 'Boleh dikosongkan jika tanpa deposit')),
             const SizedBox(height: 10),
-            TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Lokasi produk / toko')),
+            TextField(controller: locationController, decoration: const InputDecoration(labelText: 'Kota/Kabupaten toko')),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: condition,
