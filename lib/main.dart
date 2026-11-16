@@ -15,7 +15,6 @@ const List<String> ragamNusaCategories = [
   'Properti Event & Wedding',
   'Properti Kuliner',
   'Perlengkapan Workshop Kriya',
-  'Transportasi Tradisional',
 ];
 
 // Data wilayah contoh. Untuk produksi, gunakan API/database wilayah Indonesia.
@@ -783,7 +782,6 @@ class RenterDashboard extends StatelessWidget {
           _CategoryTile('Properti Event\n& Wedding', Icons.celebration_outlined),
           _CategoryTile('Properti\nKuliner', Icons.restaurant_outlined),
           _CategoryTile('Workshop\nKriya', Icons.brush_outlined),
-          _CategoryTile('Transportasi\nTradisional', Icons.directions_bike_outlined),
         ],
       ),
       const SizedBox(height: 24),
@@ -804,7 +802,6 @@ class RenterDashboard extends StatelessWidget {
             SizedBox(width: 12),
             _ProductMiniCard(title: 'Paket Alat Membatik', category: 'Perlengkapan Workshop Kriya', price: 'Rp125.000', location: 'Pekalongan', imageUrl: 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600'),
             SizedBox(width: 12),
-            _ProductMiniCard(title: 'Andong Tradisional', category: 'Transportasi Tradisional', price: 'Rp500.000', location: 'Yogyakarta', imageUrl: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600'),
           ],
         ),
       ),
@@ -879,7 +876,6 @@ final List<_CatalogItem> _catalogItems = [
   _CatalogItem('Gebyok Pelaminan Jawa', 'Properti Event & Wedding', '750000', 'Surakarta', 'Jawa Tengah', 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600', store: 'Pawon Jawa', rating: 4.9, distanceKm: 75),
   _CatalogItem('Set Alat Saji Tumpeng Tradisional', 'Properti Kuliner', '100000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1547592180-85f173990554?w=600', store: 'Dapur Tradisi', rating: 4.6, distanceKm: 10),
   _CatalogItem('Paket Alat Membatik', 'Perlengkapan Workshop Kriya', '125000', 'Pekalongan', 'Jawa Tengah', 'https://images.unsplash.com/photo-1452860606245-08befc0ff44b?w=600', store: 'Batik Lestari', rating: 4.9, distanceKm: 90),
-  _CatalogItem('Andong Tradisional', 'Transportasi Tradisional', '500000', 'Yogyakarta', 'DI Yogyakarta', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=600', store: 'Andong Mataram', rating: 4.7, distanceKm: 15),
 ];
 
 class ExplorePage extends StatefulWidget {
@@ -916,7 +912,7 @@ class _ExplorePageState extends State<ExplorePage> {
     return ListView(padding: const EdgeInsets.all(18), children: [
       const Text('Jelajahi Budaya Nusantara', style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: teks)),
       const SizedBox(height: 5),
-      const Text('Temukan enam jenis persewaan produk budaya dari berbagai daerah Indonesia.', style: TextStyle(color: Color(0xFF78695D), height: 1.4)),
+      const Text('Temukan lima jenis persewaan produk budaya dari berbagai daerah Indonesia.', style: TextStyle(color: Color(0xFF78695D), height: 1.4)),
       const SizedBox(height: 14),
       TextField(onChanged: (v) => setState(() => query = v), decoration: InputDecoration(hintText: 'Cari produk, kategori, atau daerah...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none))),
       const SizedBox(height: 12),
@@ -1113,8 +1109,6 @@ String _rentalCareForCategory(String category) {
       return 'Konfirmasi bahan alat, jumlah komponen, kebersihan, keamanan kontak pangan, serta aturan pencucian dan pengembalian.';
     case 'Perlengkapan Workshop Kriya':
       return 'Periksa jumlah alat dan kelengkapannya. Tanyakan petunjuk penggunaan serta apakah bahan praktik termasuk atau dibeli terpisah.';
-    case 'Transportasi Tradisional':
-      return 'Konfirmasi kapasitas, area layanan, operator/pengemudi, kondisi kendaraan, akses lokasi, dan prosedur keselamatan sebelum pemesanan.';
     default:
       return 'Periksa kondisi, kelengkapan, aturan penggunaan, cara pengiriman, dan ketentuan pengembalian bersama pemilik.';
   }
@@ -1241,7 +1235,6 @@ class _OwnerHomePageState extends State<OwnerHomePage> {
     {'name': 'Gebyok Pelaminan Jawa', 'category': 'Properti Event & Wedding', 'price': '750000', 'deposit': '500000', 'stock': '1', 'condition': 'Baik', 'location': 'Surakarta', 'description': 'Properti dekorasi pelaminan. Biaya angkut, instalasi, dan bongkar dikonfirmasi terpisah.', 'status': 'Tersedia'},
     {'name': 'Set Alat Saji Tumpeng Tradisional', 'category': 'Properti Kuliner', 'price': '100000', 'deposit': '75000', 'stock': '4', 'condition': 'Sangat baik', 'location': 'Yogyakarta', 'description': 'Set alat saji tumpeng. Dikembalikan dalam keadaan bersih dan lengkap.', 'status': 'Tersedia'},
     {'name': 'Paket Alat Membatik', 'category': 'Perlengkapan Workshop Kriya', 'price': '125000', 'deposit': '100000', 'stock': '8', 'condition': 'Baik', 'location': 'Pekalongan', 'description': 'Paket alat membatik untuk kegiatan workshop. Bahan habis pakai dihitung terpisah.', 'status': 'Tersedia'},
-    {'name': 'Andong Tradisional', 'category': 'Transportasi Tradisional', 'price': '500000', 'deposit': '500000', 'stock': '1', 'condition': 'Baik', 'location': 'Yogyakarta', 'description': 'Layanan andong dengan operator/pengemudi. Area layanan, kapasitas, dan jadwal wajib dikonfirmasi.', 'status': 'Tersedia'},
   ];
   final List<Map<String, String>> orders = [
     {'customer': 'Sari Wulandari', 'product': 'Paket Busana Adat Bali', 'date': '3–6 Okt 2026', 'total': '450000', 'status': 'Menunggu Konfirmasi'},
