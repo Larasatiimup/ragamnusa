@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'api_service.dart';
 
 void main() => runApp(const RagamNusaApp());
 
@@ -331,14 +332,55 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                     Align(alignment: Alignment.centerRight, child: TextButton(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordPage())), child: const Text('Lupa kata sandi?'))),
                     const SizedBox(height: 8),
-                    PrimaryButton('Masuk', () {
-                      if (email.text.trim().isEmpty || password.text.isEmpty) {
-                        notice(context, 'Email dan kata sandi wajib diisi.');
-                      } else {
-                        notice(context,
-                            'Login demo saja. Autentikasi perlu dihubungkan ke backend.');
-                      }
-                    }),
+PrimaryButton('Masuk', () async {
+  final emailText = email.text.trim();
+  final passwordText = password.text.trim();
+
+  if (emailText.isEmpty || passwordText.isEmpty) {
+    notice(context, 'Email dan kata sandi wajib diisi.');
+    return;
+  }
+
+  notice(context, 'Sedang menghubungi server...');
+
+  try {
+    // 🚀 Panggil API Backend kamu
+    final result = await ApiService.login(emailText, passwordText);
+
+    if (result['success'] == true) {
+      notice(context, 'Login berhasil!');
+
+      // Ambil nama pengguna asli dari respon backend
+      final userName = result['data']['name'] ?? 'Pengguna';
+      final role = result['data']['role'];
+
+      if (role == 'owner') {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OwnerHomePage(
+              ownerName: userName,
+              shopName: 'Toko $userName',
+            ),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => RenterHomePage(
+              userName: userName,
+            ),
+          ),
+        );
+      }
+    } else {
+      notice(context, result['message'] ?? 'Login gagal.');
+    }
+  } catch (e) {
+    notice(context, 'Gagal terhubung ke server: $e');
+  }
+}),
                     const SizedBox(height: 12),
                     PrimaryButton('Daftar Akun', () {
                       Navigator.push(context,
