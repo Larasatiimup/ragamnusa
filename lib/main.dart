@@ -534,6 +534,7 @@ class _RegisterPageState extends State<RegisterPage> {
       {String? hint, TextInputType keyboard = TextInputType.text,
       String? Function(String?)? validator, bool obscure = false,
       Widget? prefix, Widget? suffix, int lines = 1}) =>
+      
       Padding(
         padding: const EdgeInsets.only(bottom: 15),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -550,30 +551,32 @@ class _RegisterPageState extends State<RegisterPage> {
         ]),
       );
 
-  void submit() {
+ Future<void> submit() async {
     if (!formKey.currentState!.validate()) return;
     if (!agree) {
       notice(context, 'Centang persetujuan terlebih dahulu.');
       return;
     }
-    final userName = name.text.trim();
-    if (isOwner) {
-      ownerProfileData['name'] = userName;
-      ownerProfileData['store'] = shopName.text.trim();
-      ownerProfileData['address'] = shopAddress.text.trim();
-      ownerProfileData['province'] = shopProvince ?? '';
-      ownerProfileData['city'] = shopCity ?? '';
-    }
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => isOwner
-            ? OwnerHomePage(ownerName: userName, shopName: shopName.text.trim())
-            : RenterHomePage(userName: userName),
-      ),
-      (route) => route.isFirst,
+
+    // Tampilkan loading dialog atau notice
+    notice(context, 'Sedang mendaftar...');
+
+    final result = await ApiService.register(
+      name: name.text.trim(),
+      email: email.text.trim(),
+      password: password.text,
+      phone: phone.text.trim(),
+      role: isOwner ? 'owner' : 'renter',
     );
-    notice(context, 'Pendaftaran demo berhasil. Data belum tersimpan ke database.');
+
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      notice(context, 'Registrasi berhasil! Silakan masuk.');
+      Navigator.pop(context); // Kembali ke halaman Login
+    } else {
+      notice(context, result['message'] ?? 'Registrasi gagal.');
+    }
   }
 
   @override
